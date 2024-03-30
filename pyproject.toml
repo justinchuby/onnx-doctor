@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "onnx-doctor"
+version = "0.0.1"
+dependencies = [
+    "onnx>=1.15",
+    "onnx-rewriter",
+]
