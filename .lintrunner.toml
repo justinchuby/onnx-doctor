@@ -24,7 +24,7 @@ init_command = [
     'run',
     'pip_init',
     '--dry-run={{DRYRUN}}',
-    'ruff==0.1.0',
+    'ruff==0.3.4',
 ]
 is_formatter = true
 
@@ -32,9 +32,9 @@ is_formatter = true
 code = 'RUFF-FORMAT'
 include_patterns = [
     '**/*.py',
+    '**/*.pyi',
 ]
 exclude_patterns = [
-    'onnxscript/tests/onnx_backend_test_code/**',
 ]
 command = [
     'python',
@@ -52,6 +52,6 @@ init_command = [
     'run',
     'pip_init',
     '--dry-run={{DRYRUN}}',
-    '--requirement=requirements/lintrunner/requirements.txt',
+    'ruff==0.3.4',
 ]
 is_formatter = true

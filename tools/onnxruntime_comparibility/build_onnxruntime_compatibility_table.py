@@ -34,7 +34,7 @@ def get_supported_schemas() -> list[OnnxRuntimeOpSchema]:
             OnnxRuntimeOpSchema(
                 domain=schema.domain,
                 name=schema.name,
-                input_types=[input.typeStr for input in schema.inputs],
+                input_types=[input_.typeStr for input_ in schema.inputs],
                 outputs_types=[output.typeStr for output in schema.outputs],
             )
         )

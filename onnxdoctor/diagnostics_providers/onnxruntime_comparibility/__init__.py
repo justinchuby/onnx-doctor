@@ -31,7 +31,7 @@ class OnnxRuntimeOpSchema:
 
 
 def _get_op_support_table(
-    op_schemas: list[dict]
+    op_schemas: list[dict],
 ) -> dict[tuple[str, str], list[OnnxRuntimeOpSchema]]:
     op_support_table = collections.defaultdict(list)
     for elem in op_schemas:
@@ -64,7 +64,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
         self.opset_imports = model.opset_imports
         return []
 
-    def check_node(
+    def check_node(  # noqa: PLR0912
         self, node: ir.NodeProtocol
     ) -> onnxdoctor.DiagnosticsMessageIterator:
         op_id = (node.domain, node.op_type)
@@ -83,7 +83,9 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
         opset_version = self.opset_imports[node.domain]
         found_schema = None
         for schema in schemas:
-            assert schema.version_range is not None, f"Bug: {schema} does not have version_range."
+            assert (
+                schema.version_range is not None
+            ), f"Bug: {schema} does not have version_range."
             if _version_in_range(opset_version, schema.version_range):
                 found_schema = schema
                 break
