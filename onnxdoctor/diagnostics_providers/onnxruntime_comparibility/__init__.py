@@ -2,11 +2,19 @@
 
 import collections
 import dataclasses
-from . import _support_table
 
-import onnxdoctor
 from onnxrewriter.experimental import intermediate_representation as ir
 from onnxrewriter.experimental.intermediate_representation import _core
+
+import onnxdoctor
+
+from . import _support_table
+
+
+_SPECIAL_OPS_TO_SKIP = {
+    ("", "Constant"),
+}
+
 
 @dataclasses.dataclass
 class OnnxRuntimeOpSchema:
@@ -22,7 +30,9 @@ class OnnxRuntimeOpSchema:
     execution_provider: str = ""
 
 
-def _get_op_support_table(op_schemas: list[dict]) -> dict[tuple[str, str], list[OnnxRuntimeOpSchema]]:
+def _get_op_support_table(
+    op_schemas: list[dict]
+) -> dict[tuple[str, str], list[OnnxRuntimeOpSchema]]:
     op_support_table = collections.defaultdict(list)
     for elem in op_schemas:
         schema = OnnxRuntimeOpSchema(**elem)
@@ -37,7 +47,8 @@ def _version_in_range(version: int, version_range: tuple[int, int]) -> bool:
 def _to_type_str(type_: ir.TypeProtocol) -> str:
     if isinstance(type_, _core.TensorType):
         return f"tensor({type_.dtype.name.lower()})"
-    raise NotImplementedError(f"Type {type_} is not supported.")
+    raise NotImplementedError(f"Type {type(type_)} is not supported.")
+
 
 class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
     def __init__(self, execution_provider: str = "CPUExecutionProvider"):
@@ -46,13 +57,19 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
         self.support_table = _get_op_support_table(_support_table.TABLE)
         self.opset_imports = {}
 
-    def check_model(self, model: ir.ModelProtocol) -> onnxdoctor.DiagnosticsMessageIterator:
+    def check_model(
+        self, model: ir.ModelProtocol
+    ) -> onnxdoctor.DiagnosticsMessageIterator:
         self.ir_version = model.ir_version
         self.opset_imports = model.opset_imports
         return []
 
-    def check_node(self, node: ir.NodeProtocol) -> onnxdoctor.DiagnosticsMessageIterator:
+    def check_node(
+        self, node: ir.NodeProtocol
+    ) -> onnxdoctor.DiagnosticsMessageIterator:
         op_id = (node.domain, node.op_type)
+        if op_id in _SPECIAL_OPS_TO_SKIP:
+            return
         if (schemas := self.support_table.get(op_id)) is None:
             yield onnxdoctor.DiagnosticsMessage(
                 target_type="node",
@@ -85,9 +102,14 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
         # Check types
         bounded_types: dict[str, ir.TypeProtocol] = {}
         bounded_index = {}
-        for i, (input_, type_str) in enumerate(zip(node.inputs, found_schema.input_types)):
+        for i, (input_, type_str) in enumerate(
+            zip(node.inputs, found_schema.input_types)
+        ):
+            if input_ is None:
+                continue
             if input_.type is None:
                 continue
+            assert isinstance(input_.type, ir.TypeProtocol)
             if type_str not in bounded_types:
                 bounded_types[type_str] = input_.type
                 bounded_index[type_str] = i
@@ -101,9 +123,12 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     severity="error",
                     error_code="node-type-inconsistent",
                 )
-        for i, (output, type_str) in enumerate(zip(node.outputs, found_schema.outputs_types)):
+        for i, (output, type_str) in enumerate(
+            zip(node.outputs, found_schema.outputs_types)
+        ):
             if output.type is None:
                 continue
+            assert isinstance(input_.type, ir.TypeProtocol)
             if type_str not in bounded_types:
                 bounded_types[type_str] = output.type
                 # TODO: Differentiate between input and output indices
@@ -120,13 +145,15 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 )
         for type_str, type_ in bounded_types.items():
             supported_types = found_schema.type_constraints.get(type_str)
-            assert supported_types is not None, f"Bug: Type {type_str} is not defined in the schema {found_schema}"
+            assert (
+                supported_types is not None
+            ), f"Bug: Type {type_str} is not defined in the schema {found_schema}"
             if _to_type_str(type_) not in supported_types:
                 yield onnxdoctor.DiagnosticsMessage(
                     target_type="node",
                     target=node,
                     message=(
-                        f"Operator {node.domain}::{node.op_type}-{opset_version} binds type string {type_str}={type_} which is not supported by ONNX Runtime. Supported types: {', '.join(supported_types)}."
+                        f"Operator {node.domain}::{node.op_type}-{opset_version} binds type string {type_str}={type_} which is not supported by ONNX Runtime. Supported types: {', '.join(supported_types)}, with {self.execution_provider}."
                     ),
                     severity="error",
                     error_code="type-unsupported",
