@@ -97,6 +97,7 @@ def main():
     with open("ort_supported_schemas.txt", "w", encoding="utf-8") as f:
         for schema in supported_schemas:
             f.write(repr(schema))
+            f.write("\n")
 
 
 if __name__ == "__main__":
