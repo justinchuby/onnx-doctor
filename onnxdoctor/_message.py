@@ -18,7 +18,7 @@ PossibleTargetTypes = Literal[
 
 PossibleTargets = ir.Model | ir.Node | ir.Attr | ir.Tensor | ir.Graph | ir.Function
 
-PossibleSeverities = Literal["error", "warning", "info", "debug"]
+PossibleSeverities = Literal["error", "warning", "info", "recommendation", "debug", "failure"]
 
 
 @dataclasses.dataclass
@@ -29,3 +29,6 @@ class DiagnosticsMessage:
     target: PossibleTargets
     message: str
     severity: PossibleSeverities
+    # TODO: Mark as required
+    producer: str = ""
+    error_code: str = ""
