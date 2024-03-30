@@ -8,7 +8,7 @@ from onnxrewriter.experimental import intermediate_representation as ir
 from . import _diagnostics, _message
 
 
-def diagnose(
+def diagnose(  # noqa: PLR0911
     ir_object: ir.ModelProtocol
     | ir.GraphProtocol
     | ir.FunctionProtocol
@@ -20,33 +20,19 @@ def diagnose(
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
 ) -> Sequence[_message.DiagnosticsMessage]:
     if isinstance(ir_object, ir.ModelProtocol):
-        return list(
-            message for message in diagnose_model(ir_object, diagnostics_providers)
-        )
+        return list(diagnose_model(ir_object, diagnostics_providers))
     if isinstance(ir_object, ir.GraphProtocol):
-        return list(
-            message for message in diagnose_graph(ir_object, diagnostics_providers)
-        )
+        return list(diagnose_graph(ir_object, diagnostics_providers))
     if isinstance(ir_object, ir.FunctionProtocol):
-        return list(
-            message for message in diagnose_function(ir_object, diagnostics_providers)
-        )
+        return list(diagnose_function(ir_object, diagnostics_providers))
     if isinstance(ir_object, ir.NodeProtocol):
-        return list(
-            message for message in diagnose_node(ir_object, diagnostics_providers)
-        )
+        return list(diagnose_node(ir_object, diagnostics_providers))
     if isinstance(ir_object, ir.TensorProtocol):
-        return list(
-            message for message in diagnose_tensor(ir_object, diagnostics_providers)
-        )
+        return list(diagnose_tensor(ir_object, diagnostics_providers))
     if isinstance(ir_object, ir.ValueProtocol):
-        return list(
-            message for message in diagnose_value(ir_object, diagnostics_providers)
-        )
+        return list(diagnose_value(ir_object, diagnostics_providers))
     if isinstance(ir_object, ir.AttributeProtocol):
-        return list(
-            message for message in diagnose_attribute(ir_object, diagnostics_providers)
-        )
+        return list(diagnose_attribute(ir_object, diagnostics_providers))
     raise TypeError(f"Unknown IR object: {ir_object}")
 
 

@@ -70,9 +70,17 @@ lint.select = [
     "W", # pycodestyle
     "YTT", # flake8-2020
 ]
-lint.ignore = [
+ignore = [
+    "D1", # D1 is for missing docstrings, which is not yet enforced.
     "E501", # Line length. Not enforced because black will handle formatting
-    "PLR0913", # Too many arguments
+    "PYI041", # int | float is more clear
+    "SIM102", # Collapible if statements are not always more readable
+    "SIM108", # We don't always encourage ternary operators
+    "SIM114", # Don't always combine if branches for debugability
+    "SIM116", # Don't use dict lookup to replace if-else
+    "TRY003", # Messages can be constructed in the exception
+    "UP006", # keep-runtime-typing
+    "UP007", # keep-runtime-typing
 ]
 
 [tool.ruff.lint.pydocstyle]

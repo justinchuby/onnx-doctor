@@ -1,4 +1,3 @@
-import abc
 from typing import Iterable, Iterator, TypeAlias
 from onnxrewriter.experimental import intermediate_representation as ir
 from . import _message
@@ -9,31 +8,42 @@ DiagnosticsMessageIterator: TypeAlias = (
 )
 
 
-class DiagnosticsProvider(abc.ABC):
+class DiagnosticsProvider:
     def check_model(self, model: ir.ModelProtocol) -> DiagnosticsMessageIterator:
         del model
-        return []
+        return
+        yield
 
     def check_graph(self, graph: ir.GraphProtocol) -> DiagnosticsMessageIterator:
         del graph
-        return []
+        return
+        yield
 
-    def check_function(self, function: ir.FunctionProtocol) -> DiagnosticsMessageIterator:
+    def check_function(
+        self, function: ir.FunctionProtocol
+    ) -> DiagnosticsMessageIterator:
         del function
-        return []
+        return
+        yield
 
     def check_node(self, node: ir.NodeProtocol) -> DiagnosticsMessageIterator:
         del node
-        return []
+        return
+        yield
 
     def check_value(self, value: ir.ValueProtocol) -> DiagnosticsMessageIterator:
         del value
-        return []
+        return
+        yield
 
-    def check_attribute(self, attr: ir.AttributeProtocol | ir.ReferenceAttributeProtocol) -> DiagnosticsMessageIterator:
+    def check_attribute(
+        self, attr: ir.AttributeProtocol | ir.ReferenceAttributeProtocol
+    ) -> DiagnosticsMessageIterator:
         del attr
-        return []
+        return
+        yield
 
     def check_tensor(self, tensor: ir.TensorProtocol) -> DiagnosticsMessageIterator:
         del tensor
-        return []
+        return
+        yield
