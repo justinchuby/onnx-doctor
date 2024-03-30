@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 
 import dataclasses
+import json
 from typing import Tuple
 
 import onnxruntime.capi.onnxruntime_pybind11_state as ort_api
@@ -18,7 +19,7 @@ class OnnxRuntimeOpSchema:
     input_types: list[str]  # Name -> TypeStr
     outputs_types: list[str]  # Name -> TypeStr
     # TODO: Handle variadic inputs and outputs
-    type_constraints: dict[str, set[str]] = dataclasses.field(
+    type_constraints: dict[str, list[str]] = dataclasses.field(
         default_factory=dict
     )  # Type -> Constraints
     version_range: tuple[int, int] | None = None
@@ -69,11 +70,11 @@ def get_supported_schemas() -> list[OnnxRuntimeOpSchema]:
             ].type_constraints
             for constraint_name, types in known_type_constraints.items():
                 # Add the new constraints into the known types
-                types.update(kernel_def.type_constraints[constraint_name])
+                types.extend(kernel_def.type_constraints[constraint_name])
         else:
             type_constraints = {}
             for name, types in kernel_def.type_constraints.items():
-                type_constraints[name] = set(types)
+                type_constraints[name] = list(types)
             provider_support_information[schema_key] = dataclasses.replace(
                 schema,
                 version_range=version_range,
@@ -94,10 +95,9 @@ def get_supported_schemas() -> list[OnnxRuntimeOpSchema]:
 
 def main():
     supported_schemas = get_supported_schemas()
-    with open("ort_supported_schemas.txt", "w", encoding="utf-8") as f:
-        for schema in supported_schemas:
-            f.write(repr(schema))
-            f.write("\n")
+    schemas = [dataclasses.asdict(schema) for schema in supported_schemas]
+    with open("ort_supported_schemas.json", "w", encoding="utf-8") as f:
+        json.dump(schemas, f, indent=2)
 
 
 if __name__ == "__main__":
