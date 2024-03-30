@@ -1,4 +1,5 @@
 """Diagnostics messages."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -16,9 +17,19 @@ PossibleTargetTypes = Literal[
     "function",
 ]
 
-PossibleTargets = ir.Model | ir.Node | ir.Attr | ir.Tensor | ir.Graph | ir.Function
+PossibleTargets = (
+    ir.ModelProtocol
+    | ir.NodeProtocol
+    | ir.AttributeProtocol
+    | ir.TensorProtocol
+    | ir.GraphProtocol
+    | ir.FunctionProtocol
+    | ir.ReferenceAttributeProtocol
+)
 
-PossibleSeverities = Literal["error", "warning", "info", "recommendation", "debug", "failure"]
+PossibleSeverities = Literal[
+    "error", "warning", "info", "recommendation", "debug", "failure"
+]
 
 
 @dataclasses.dataclass

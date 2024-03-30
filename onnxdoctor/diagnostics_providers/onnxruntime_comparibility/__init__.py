@@ -83,6 +83,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
         opset_version = self.opset_imports[node.domain]
         found_schema = None
         for schema in schemas:
+            assert schema.version_range is not None, f"Bug: {schema} does not have version_range."
             if _version_in_range(opset_version, schema.version_range):
                 found_schema = schema
                 break
