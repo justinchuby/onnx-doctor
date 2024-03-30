@@ -109,7 +109,6 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 continue
             if input_.type is None:
                 continue
-            assert isinstance(input_.type, ir.TypeProtocol)
             if type_str not in bounded_types:
                 bounded_types[type_str] = input_.type
                 bounded_index[type_str] = i
@@ -128,7 +127,6 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
         ):
             if output.type is None:
                 continue
-            assert isinstance(input_.type, ir.TypeProtocol)
             if type_str not in bounded_types:
                 bounded_types[type_str] = output.type
                 # TODO: Differentiate between input and output indices
@@ -144,9 +142,14 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     error_code="node-type-inconsistent",
                 )
         for type_str, type_ in bounded_types.items():
+            # type_str can be a type constraint name like T, or a type string like tensor(float)
+            # 1/2. Handle the tensor(float) case fist
+            if _to_type_str(type_) == type_str:
+                continue
+            # 2/2. Handle the T case
             supported_types = found_schema.type_constraints.get(type_str)
             assert (
-                supported_types is not None
+                supported_types is not None and type_str not in supported_types
             ), f"Bug: Type {type_str} is not defined in the schema {found_schema}"
             if _to_type_str(type_) not in supported_types:
                 yield onnxdoctor.DiagnosticsMessage(
