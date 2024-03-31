@@ -51,7 +51,7 @@ def _to_type_str(type_: ir.TypeProtocol) -> str:
     if isinstance(type_, _core.SequenceType):
         return f"seq({_to_type_str(type_.elem_type)})"
     if isinstance(type_, _core.OptionalType):
-        return f"opt({_to_type_str(type_.elem_type)})"
+        return f"optional({_to_type_str(type_.elem_type)})"
     raise NotImplementedError(f"Type {type(type_)} is not supported.")
 
 
