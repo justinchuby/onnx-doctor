@@ -87,7 +87,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
             yield onnxdoctor.DiagnosticsMessage(
                 target_type="node",
                 target=node,
-                message=f"ONNX Runtime does not support operator {node.domain}::{node.op_type} with {self.execution_provider}",
+                message=f"Operator {node.domain}::{node.op_type} not supported by {self.execution_provider} in ONNX Runtime.",
                 # TODO: Allow customizing severity
                 severity="error",
                 error_code="operator-unsupported",
@@ -107,7 +107,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 target_type="node",
                 target=node,
                 message=(
-                    f"ONNX Runtime does not support operator {node.domain}::{node.op_type} with {self.execution_provider} in opset {opset_version}. "
+                    f"Operator {node.domain}::{node.op_type} in opset {opset_version} not supported by {self.execution_provider} in ONNX Runtime. "
                     f"All supported versions: {', '.join(f'{schema.version_range[0]}-{schema.version_range[1]}' for schema in schemas)}."
                 ),
                 severity="error",
@@ -180,7 +180,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     target_type="node",
                     target=node,
                     message=(
-                        f"Operator {node.domain}::{node.op_type}-{opset_version} binds type string {type_str}={type_} which is not supported by ONNX Runtime. Supported types: {', '.join(supported_types)}, with {self.execution_provider}."
+                        f"Operator {node.domain}::{node.op_type}-{opset_version} binds type string {type_str}={type_} which is not supported by ONNX Runtime's {self.execution_provider}. Supported types: {', '.join(supported_types)}."
                     ),
                     severity="error",
                     error_code="type-unsupported",
