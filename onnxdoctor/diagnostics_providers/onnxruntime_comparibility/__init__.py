@@ -175,6 +175,9 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     error_code="typestr-not-exist-in-schema",
                 )
                 continue
+            if _to_type_str(type_) == "tensor(float16)" and self.execution_provider == "CPUExecutionProvider":
+                # Special case: ONNX Runtime supports float16 on CPU by inserting a Cast node
+                continue
             if _to_type_str(type_) not in supported_types:
                 yield onnxdoctor.DiagnosticsMessage(
                     target_type="node",
