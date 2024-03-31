@@ -45,13 +45,13 @@ def _version_in_range(version: int, version_range: tuple[int, int]) -> bool:
     return version_range[0] <= version <= version_range[1]
 
 
-def _to_type_str(type_: ir.TypeProtocol) -> str:
+def _to_onnx_string_type_format(type_: ir.TypeProtocol) -> str:
     if isinstance(type_, _core.TensorType):
         return f"tensor({type_.dtype.name.lower()})"
     if isinstance(type_, _core.SequenceType):
-        return f"seq({_to_type_str(type_.elem_type)})"
+        return f"seq({_to_onnx_string_type_format(type_.elem_type)})"
     if isinstance(type_, _core.OptionalType):
-        return f"optional({_to_type_str(type_.elem_type)})"
+        return f"optional({_to_onnx_string_type_format(type_.elem_type)})"
     raise NotImplementedError(f"Type {type(type_)} is not supported.")
 
 
@@ -159,10 +159,15 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 )
         for type_str, type_ in bounded_types.items():
             # type_str can be a type constraint name like T, or a type string like tensor(float)
-            # 1/2. Handle the tensor(float) case fist
-            if _to_type_str(type_) == type_str:
+            # 1/3. Handle the tensor(float) case fist
+            onnx_type = _to_onnx_string_type_format(type_)
+            if onnx_type == type_str:
                 continue
-            # 2/2. Handle the T case
+            # 2/3. Handle the B case
+            if type_str == "B" and onnx_type == "tensor(bool)":
+                # Special case: B means boolean and is sometimes not specified
+                continue
+            # 3/3. Handle the <T> case
             supported_types = found_schema.type_constraints.get(type_str)
             if supported_types is None:
                 yield onnxdoctor.DiagnosticsMessage(
@@ -175,10 +180,10 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     error_code="typestr-not-exist-in-schema",
                 )
                 continue
-            if _to_type_str(type_) == "tensor(float16)" and self.execution_provider == "CPUExecutionProvider":
+            if onnx_type == "tensor(float16)" and self.execution_provider == "CPUExecutionProvider":
                 # Special case: ONNX Runtime supports float16 on CPU by inserting a Cast node
                 continue
-            if _to_type_str(type_) not in supported_types:
+            if onnx_type not in supported_types:
                 yield onnxdoctor.DiagnosticsMessage(
                     target_type="node",
                     target=node,
