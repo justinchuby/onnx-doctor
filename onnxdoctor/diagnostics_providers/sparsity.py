@@ -11,7 +11,7 @@ class SparsityAnalyzer(onnxdoctor.DiagnosticsProvider):
         self, tensor: ir.TensorProtocol
     ) -> onnxdoctor.DiagnosticsMessageIterator:
         array = tensor.numpy()
-        sparsity = np.count_nonzero(np.abs(array) < self.threshold) / array.size
+        sparsity = np.count_nonzero(np.abs(array) <= self.threshold) / array.size
         if tensor is not None:
             yield onnxdoctor.DiagnosticsMessage(
                 target_type="tensor",
