@@ -13,6 +13,7 @@ from . import _support_table
 
 _SPECIAL_OPS_TO_SKIP = {
     ("", "Constant"),
+    ("", "CastLike"),
 }
 
 
@@ -44,9 +45,13 @@ def _version_in_range(version: int, version_range: tuple[int, int]) -> bool:
     return version_range[0] <= version <= version_range[1]
 
 
-def _to_type_str(type_: ir.TypeProtocol) -> str:
+def _to_onnx_string_type_format(type_: ir.TypeProtocol) -> str:
     if isinstance(type_, _core.TensorType):
         return f"tensor({type_.dtype.name.lower()})"
+    if isinstance(type_, _core.SequenceType):
+        return f"seq({_to_onnx_string_type_format(type_.elem_type)})"
+    if isinstance(type_, _core.OptionalType):
+        return f"optional({_to_onnx_string_type_format(type_.elem_type)})"
     raise NotImplementedError(f"Type {type(type_)} is not supported.")
 
 
@@ -56,17 +61,25 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
         self.ir_version = None
         self.support_table = _get_op_support_table(_support_table.TABLE)
         self.opset_imports = {}
+        self.imported_functions = set()
 
     def check_model(
         self, model: ir.ModelProtocol
     ) -> onnxdoctor.DiagnosticsMessageIterator:
         self.ir_version = model.ir_version
         self.opset_imports = model.opset_imports
-        return []
+        self.imported_functions = set(model.functions)
+        return
+        yield
 
     def check_node(  # noqa: PLR0912
         self, node: ir.NodeProtocol
     ) -> onnxdoctor.DiagnosticsMessageIterator:
+        function_op_id = (node.domain, node.op_type, node.overload)
+        if function_op_id in self.imported_functions:
+            # The op is a function op and the function is defined
+            # TODO: Handle opset version
+            return
         op_id = (node.domain, node.op_type)
         if op_id in _SPECIAL_OPS_TO_SKIP:
             return
@@ -74,7 +87,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
             yield onnxdoctor.DiagnosticsMessage(
                 target_type="node",
                 target=node,
-                message=f"ONNX Runtime does not support operator {node.domain}::{node.op_type} with {self.execution_provider}",
+                message=f"Operator {node.domain}::{node.op_type} not supported by {self.execution_provider} in ONNX Runtime.",
                 # TODO: Allow customizing severity
                 severity="error",
                 error_code="operator-unsupported",
@@ -94,7 +107,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 target_type="node",
                 target=node,
                 message=(
-                    f"ONNX Runtime does not support operator {node.domain}::{node.op_type} with {self.execution_provider} in opset {opset_version}. "
+                    f"Operator {node.domain}::{node.op_type} in opset {opset_version} not supported by {self.execution_provider} in ONNX Runtime. "
                     f"All supported versions: {', '.join(f'{schema.version_range[0]}-{schema.version_range[1]}' for schema in schemas)}."
                 ),
                 severity="error",
@@ -146,20 +159,39 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 )
         for type_str, type_ in bounded_types.items():
             # type_str can be a type constraint name like T, or a type string like tensor(float)
-            # 1/2. Handle the tensor(float) case fist
-            if _to_type_str(type_) == type_str:
+            # 1/3. Handle the tensor(float) case fist
+            onnx_type = _to_onnx_string_type_format(type_)
+            if onnx_type == type_str:
                 continue
-            # 2/2. Handle the T case
+            # 2/3. Handle the B case
+            if type_str == "B" and onnx_type == "tensor(bool)":
+                # Special case: B means boolean and is sometimes not specified
+                continue
+            # 3/3. Handle the <T> case
             supported_types = found_schema.type_constraints.get(type_str)
-            assert (
-                supported_types is not None and type_str not in supported_types
-            ), f"Bug: Type {type_str} is not defined in the schema {found_schema}"
-            if _to_type_str(type_) not in supported_types:
+            if supported_types is None:
                 yield onnxdoctor.DiagnosticsMessage(
                     target_type="node",
                     target=node,
                     message=(
-                        f"Operator {node.domain}::{node.op_type}-{opset_version} binds type string {type_str}={type_} which is not supported by ONNX Runtime. Supported types: {', '.join(supported_types)}, with {self.execution_provider}."
+                        f"Bug: Type {type_str} is not defined in the schema {found_schema}"
+                    ),
+                    severity="failure",
+                    error_code="typestr-not-exist-in-schema",
+                )
+                continue
+            if (
+                onnx_type == "tensor(float16)"
+                and self.execution_provider == "CPUExecutionProvider"
+            ):
+                # Special case: ONNX Runtime supports float16 on CPU by inserting a Cast node
+                continue
+            if onnx_type not in supported_types:
+                yield onnxdoctor.DiagnosticsMessage(
+                    target_type="node",
+                    target=node,
+                    message=(
+                        f"Operator {node.domain}::{node.op_type}-{opset_version} binds type string {type_str}={type_} which is not supported by ONNX Runtime's {self.execution_provider}. Supported types: {', '.join(supported_types)}."
                     ),
                     severity="error",
                     error_code="type-unsupported",
