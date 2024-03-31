@@ -13,6 +13,7 @@ from . import _support_table
 
 _SPECIAL_OPS_TO_SKIP = {
     ("", "Constant"),
+    ("", "CastLike"),
 }
 
 
@@ -47,6 +48,10 @@ def _version_in_range(version: int, version_range: tuple[int, int]) -> bool:
 def _to_type_str(type_: ir.TypeProtocol) -> str:
     if isinstance(type_, _core.TensorType):
         return f"tensor({type_.dtype.name.lower()})"
+    if isinstance(type_, _core.SequenceType):
+        return f"seq({_to_type_str(type_.elem_type)})"
+    if isinstance(type_, _core.OptionalType):
+        return f"opt({_to_type_str(type_.elem_type)})"
     raise NotImplementedError(f"Type {type(type_)} is not supported.")
 
 
@@ -56,17 +61,25 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
         self.ir_version = None
         self.support_table = _get_op_support_table(_support_table.TABLE)
         self.opset_imports = {}
+        self.imported_functions = set()
 
     def check_model(
         self, model: ir.ModelProtocol
     ) -> onnxdoctor.DiagnosticsMessageIterator:
         self.ir_version = model.ir_version
         self.opset_imports = model.opset_imports
-        return []
+        self.imported_functions = set(model.functions)
+        return
+        yield
 
     def check_node(  # noqa: PLR0912
         self, node: ir.NodeProtocol
     ) -> onnxdoctor.DiagnosticsMessageIterator:
+        function_op_id = (node.domain, node.op_type, node.overload)
+        if function_op_id in self.imported_functions:
+            # The op is a function op and the function is defined
+            # TODO: Handle opset version
+            return
         op_id = (node.domain, node.op_type)
         if op_id in _SPECIAL_OPS_TO_SKIP:
             return
@@ -151,9 +164,17 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 continue
             # 2/2. Handle the T case
             supported_types = found_schema.type_constraints.get(type_str)
-            assert (
-                supported_types is not None and type_str not in supported_types
-            ), f"Bug: Type {type_str} is not defined in the schema {found_schema}"
+            if supported_types is None:
+                yield onnxdoctor.DiagnosticsMessage(
+                    target_type="node",
+                    target=node,
+                    message=(
+                        f"Bug: Type {type_str} is not defined in the schema {found_schema}"
+                    ),
+                    severity="failure",
+                    error_code="typestr-not-exist-in-schema",
+                )
+                continue
             if _to_type_str(type_) not in supported_types:
                 yield onnxdoctor.DiagnosticsMessage(
                     target_type="node",
