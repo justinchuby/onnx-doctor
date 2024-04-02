@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 
 from typing import Literal
-from onnxrewriter.experimental import intermediate_representation as ir
+from onnxscript import ir
 
 
 PossibleTargetTypes = Literal[

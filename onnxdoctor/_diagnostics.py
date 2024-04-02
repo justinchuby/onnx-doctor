@@ -1,5 +1,5 @@
 from typing import Iterable, Iterator, TypeAlias
-from onnxrewriter.experimental import intermediate_representation as ir
+from onnxscript import ir
 from . import _message
 
 

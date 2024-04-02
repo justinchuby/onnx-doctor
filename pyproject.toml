@@ -7,7 +7,7 @@ name = "onnx-doctor"
 version = "0.0.1a1"
 dependencies = [
     "onnx>=1.16",
-    "onnxrewriter",
+    "onnxscript",
 ]
 description = "Extensible and beautiful ONNX checker"
 keywords = []

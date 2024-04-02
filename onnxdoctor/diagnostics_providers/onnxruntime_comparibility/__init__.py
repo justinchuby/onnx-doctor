@@ -3,8 +3,7 @@
 import collections
 import dataclasses
 
-from onnxrewriter.experimental import intermediate_representation as ir
-from onnxrewriter.experimental.intermediate_representation import _core
+from onnxscript import ir
 
 import onnxdoctor
 
@@ -46,11 +45,11 @@ def _version_in_range(version: int, version_range: tuple[int, int]) -> bool:
 
 
 def _to_onnx_string_type_format(type_: ir.TypeProtocol) -> str:
-    if isinstance(type_, _core.TensorType):
+    if isinstance(type_, ir.TensorType):
         return f"tensor({type_.dtype.name.lower()})"
-    if isinstance(type_, _core.SequenceType):
+    if isinstance(type_, ir.SequenceType):
         return f"seq({_to_onnx_string_type_format(type_.elem_type)})"
-    if isinstance(type_, _core.OptionalType):
+    if isinstance(type_, ir.OptionalType):
         return f"optional({_to_onnx_string_type_format(type_.elem_type)})"
     raise NotImplementedError(f"Type {type(type_)} is not supported.")
 
