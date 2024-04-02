@@ -1,5 +1,5 @@
 import onnxdoctor
-from onnxrewriter.experimental import intermediate_representation as ir
+from onnxscript import ir
 import numpy as np
 
 
