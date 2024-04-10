@@ -8,6 +8,7 @@ version = "0.0.1a2"
 dependencies = [
     "onnx>=1.16",
     "onnxscript",
+    "rich",
 ]
 description = "Extensible and beautiful ONNX checker"
 keywords = []
