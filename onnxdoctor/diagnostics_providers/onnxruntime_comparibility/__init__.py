@@ -55,6 +55,8 @@ def _to_onnx_string_type_format(type_: ir.TypeProtocol) -> str:
 
 
 class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
+    PRODUCER = "OnnxRuntimeCompatibilityLinter"
+
     def __init__(self, execution_provider: str = "CPUExecutionProvider"):
         self.execution_provider = execution_provider
         self.ir_version = None
@@ -90,6 +92,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 # TODO: Allow customizing severity
                 severity="error",
                 error_code="operator-unsupported",
+                producer=self.PRODUCER,
             )
             return
         opset_version = self.opset_imports[node.domain]
@@ -111,6 +114,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 ),
                 severity="error",
                 error_code="operator-version-unsupported",
+                producer=self.PRODUCER,
             )
             return
 
@@ -136,6 +140,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     ),
                     severity="error",
                     error_code="node-type-inconsistent",
+                    producer=self.PRODUCER,
                 )
         for i, (output, type_str) in enumerate(
             zip(node.outputs, found_schema.outputs_types)
@@ -155,6 +160,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     ),
                     severity="error",
                     error_code="node-type-inconsistent",
+                    producer=self.PRODUCER,
                 )
         for type_str, type_ in bounded_types.items():
             # type_str can be a type constraint name like T, or a type string like tensor(float)
@@ -177,6 +183,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     ),
                     severity="failure",
                     error_code="typestr-not-exist-in-schema",
+                    producer=self.PRODUCER,
                 )
                 continue
             if (
@@ -190,8 +197,11 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     target_type="node",
                     target=node,
                     message=(
-                        f"Operator {node.domain}::{node.op_type}-{opset_version} binds type string {type_str}={type_} which is not supported by ONNX Runtime's {self.execution_provider}. Supported types: {', '.join(supported_types)}."
+                        f"Operator {node.domain}::{node.op_type}-{opset_version} binds type string "
+                        f"{type_str}={type_} which is not supported by ONNX Runtime's "
+                        f"{self.execution_provider}. Supported types: {', '.join(supported_types)}."
                     ),
                     severity="error",
                     error_code="type-unsupported",
+                    producer=self.PRODUCER,
                 )

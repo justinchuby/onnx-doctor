@@ -40,6 +40,5 @@ class DiagnosticsMessage:
     target: PossibleTargets
     message: str
     severity: PossibleSeverities
-    # TODO: Mark as required
-    producer: str = ""
-    error_code: str = ""
+    producer: str
+    error_code: str
