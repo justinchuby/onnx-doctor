@@ -8,6 +8,7 @@ version = "0.0.1a2"
 dependencies = [
     "onnx>=1.16",
     "onnxscript",
+    "rich",
 ]
 description = "Extensible and beautiful ONNX checker"
 keywords = []
@@ -54,23 +55,29 @@ lint.select = [
     "E", # pycodestyle
     "F", # Pyflakes
     "G", # flake8-logging-format
+    "I", # isort
     "ICN",
     "ISC", # flake8-implicit-str-concat
+    "LOG", # flake8-logging-format
     "N", # pep8-naming
+    "NPY", # modern numpy
+    "PERF", # Perflint
+    "PIE", # flake8-pie
     "PLC",
     "PLE",
     "PLR",
     "PLW",
-    "NPY", # modern numpy
-    "PERF", # Perflint
     "RUF", # Ruff-specific rules
+    "SIM",
+    "SLOT",
     "T10", # flake8-debugger
     "TID252", # Disallow relative imports
+    "TRY",
     "UP", # pyupgrade
     "W", # pycodestyle
     "YTT", # flake8-2020
 ]
-ignore = [
+lint.ignore = [
     "D1", # D1 is for missing docstrings, which is not yet enforced.
     "E501", # Line length. Not enforced because black will handle formatting
     "PYI041", # int | float is more clear
@@ -85,3 +92,6 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]

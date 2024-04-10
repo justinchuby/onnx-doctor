@@ -1,5 +1,7 @@
 """Analyze model compatibility with ONNX Runtime."""
 
+from __future__ import annotations
+
 import collections
 import dataclasses
 
@@ -8,7 +10,6 @@ from onnxscript import ir
 import onnxdoctor
 
 from . import _support_table
-
 
 _SPECIAL_OPS_TO_SKIP = {
     ("", "Constant"),
@@ -23,10 +24,10 @@ class OnnxRuntimeOpSchema:
     input_types: list[str]  # Name -> TypeStr
     outputs_types: list[str]  # Name -> TypeStr
     # TODO: Handle variadic inputs and outputs
+    version_range: tuple[int, int]
     type_constraints: dict[str, list[str]] = dataclasses.field(
         default_factory=dict
     )  # Type -> Constraints
-    version_range: tuple[int, int] | None = None
     execution_provider: str = ""
 
 
@@ -55,6 +56,8 @@ def _to_onnx_string_type_format(type_: ir.TypeProtocol) -> str:
 
 
 class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
+    PRODUCER = "OnnxRuntimeCompatibilityLinter"
+
     def __init__(self, execution_provider: str = "CPUExecutionProvider"):
         self.execution_provider = execution_provider
         self.ir_version = None
@@ -90,14 +93,12 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 # TODO: Allow customizing severity
                 severity="error",
                 error_code="operator-unsupported",
+                producer=self.PRODUCER,
             )
             return
         opset_version = self.opset_imports[node.domain]
         found_schema = None
         for schema in schemas:
-            assert (
-                schema.version_range is not None
-            ), f"Bug: {schema} does not have version_range."
             if _version_in_range(opset_version, schema.version_range):
                 found_schema = schema
                 break
@@ -111,6 +112,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 ),
                 severity="error",
                 error_code="operator-version-unsupported",
+                producer=self.PRODUCER,
             )
             return
 
@@ -136,6 +138,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     ),
                     severity="error",
                     error_code="node-type-inconsistent",
+                    producer=self.PRODUCER,
                 )
         for i, (output, type_str) in enumerate(
             zip(node.outputs, found_schema.outputs_types)
@@ -155,6 +158,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     ),
                     severity="error",
                     error_code="node-type-inconsistent",
+                    producer=self.PRODUCER,
                 )
         for type_str, type_ in bounded_types.items():
             # type_str can be a type constraint name like T, or a type string like tensor(float)
@@ -177,6 +181,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     ),
                     severity="failure",
                     error_code="typestr-not-exist-in-schema",
+                    producer=self.PRODUCER,
                 )
                 continue
             if (
@@ -190,8 +195,11 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                     target_type="node",
                     target=node,
                     message=(
-                        f"Operator {node.domain}::{node.op_type}-{opset_version} binds type string {type_str}={type_} which is not supported by ONNX Runtime's {self.execution_provider}. Supported types: {', '.join(supported_types)}."
+                        f"Operator {node.domain}::{node.op_type}-{opset_version} binds type string "
+                        f"{type_str}={type_} which is not supported by ONNX Runtime's "
+                        f"{self.execution_provider}. Supported types: {', '.join(supported_types)}."
                     ),
                     severity="error",
                     error_code="type-unsupported",
+                    producer=self.PRODUCER,
                 )

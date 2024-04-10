@@ -1,9 +1,14 @@
-import onnxdoctor
-from onnxscript import ir
+from __future__ import annotations
+
 import numpy as np
+from onnxscript import ir
+
+import onnxdoctor
 
 
 class SparsityAnalyzer(onnxdoctor.DiagnosticsProvider):
+    PRODUCER = "SparsityAnalyzer"
+
     def __init__(self, threshold: float = 1e-5):
         self.threshold = threshold
 
@@ -18,4 +23,6 @@ class SparsityAnalyzer(onnxdoctor.DiagnosticsProvider):
                 target=tensor,
                 message=f"Sparsity is {sparsity * 100:.2f}%",
                 severity="info",
+                producer=self.PRODUCER,
+                error_code="sparsity",
             )

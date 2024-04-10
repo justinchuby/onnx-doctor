@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import dataclasses
+from typing import Literal, Union
 
-from typing import Literal
 from onnxscript import ir
-
 
 PossibleTargetTypes = Literal[
     "model",
@@ -17,15 +16,16 @@ PossibleTargetTypes = Literal[
     "function",
 ]
 
-PossibleTargets = (
-    ir.ModelProtocol
-    | ir.NodeProtocol
-    | ir.AttributeProtocol
-    | ir.TensorProtocol
-    | ir.GraphProtocol
-    | ir.FunctionProtocol
-    | ir.ReferenceAttributeProtocol
-)
+PossibleTargets = Union[
+    ir.ModelProtocol,
+    ir.GraphProtocol,
+    ir.NodeProtocol,
+    ir.AttributeProtocol,
+    ir.TensorProtocol,
+    ir.ValueProtocol,
+    ir.FunctionProtocol,
+    ir.ReferenceAttributeProtocol,
+]
 
 PossibleSeverities = Literal[
     "error", "warning", "info", "recommendation", "debug", "failure"
@@ -40,6 +40,5 @@ class DiagnosticsMessage:
     target: PossibleTargets
     message: str
     severity: PossibleSeverities
-    # TODO: Mark as required
-    producer: str = ""
-    error_code: str = ""
+    producer: str
+    error_code: str
