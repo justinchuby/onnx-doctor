@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Literal
+from typing import Literal, Union
 
 from onnxscript import ir
 
@@ -16,15 +16,15 @@ PossibleTargetTypes = Literal[
     "function",
 ]
 
-PossibleTargets = (
-    ir.ModelProtocol
-    | ir.NodeProtocol
-    | ir.AttributeProtocol
-    | ir.TensorProtocol
-    | ir.GraphProtocol
-    | ir.FunctionProtocol
-    | ir.ReferenceAttributeProtocol
-)
+PossibleTargets = Union[
+    ir.ModelProtocol,
+    ir.NodeProtocol,
+    ir.AttributeProtocol,
+    ir.TensorProtocol,
+    ir.GraphProtocol,
+    ir.FunctionProtocol,
+    ir.ReferenceAttributeProtocol,
+]
 
 PossibleSeverities = Literal[
     "error", "warning", "info", "recommendation", "debug", "failure"
