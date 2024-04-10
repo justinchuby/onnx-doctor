@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from typing import Iterable, Iterator, TypeAlias
+import typing
+from typing import Iterable, Iterator
 
 from onnxscript import ir
 
 from . import _message
+
+if typing.TYPE_CHECKING:
+    from typing_extensions import TypeAlias
 
 DiagnosticsMessageIterator: TypeAlias = (
     Iterable[_message.DiagnosticsMessage] | Iterator[_message.DiagnosticsMessage]
