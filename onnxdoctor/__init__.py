@@ -1,4 +1,5 @@
 """Diagnose your ONNX model."""
+
 from __future__ import annotations
 
 __all__ = [

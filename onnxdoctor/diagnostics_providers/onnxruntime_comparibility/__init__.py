@@ -1,4 +1,5 @@
 """Analyze model compatibility with ONNX Runtime."""
+
 from __future__ import annotations
 
 import collections
