@@ -1,4 +1,5 @@
 """Analyze model compatibility with ONNX Runtime."""
+from __future__ import annotations
 
 import collections
 import dataclasses
@@ -8,7 +9,6 @@ from onnxscript import ir
 import onnxdoctor
 
 from . import _support_table
-
 
 _SPECIAL_OPS_TO_SKIP = {
     ("", "Constant"),
@@ -23,10 +23,10 @@ class OnnxRuntimeOpSchema:
     input_types: list[str]  # Name -> TypeStr
     outputs_types: list[str]  # Name -> TypeStr
     # TODO: Handle variadic inputs and outputs
+    version_range: tuple[int, int]
     type_constraints: dict[str, list[str]] = dataclasses.field(
         default_factory=dict
     )  # Type -> Constraints
-    version_range: tuple[int, int] | None = None
     execution_provider: str = ""
 
 
@@ -98,9 +98,6 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
         opset_version = self.opset_imports[node.domain]
         found_schema = None
         for schema in schemas:
-            assert (
-                schema.version_range is not None
-            ), f"Bug: {schema} does not have version_range."
             if _version_in_range(opset_version, schema.version_range):
                 found_schema = schema
                 break

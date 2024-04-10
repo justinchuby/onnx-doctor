@@ -1,7 +1,10 @@
-from typing import Iterable, Iterator, TypeAlias
-from onnxscript import ir
-from . import _message
+from __future__ import annotations
 
+from typing import Iterable, Iterator, TypeAlias
+
+from onnxscript import ir
+
+from . import _message
 
 DiagnosticsMessageIterator: TypeAlias = (
     Iterable[_message.DiagnosticsMessage] | Iterator[_message.DiagnosticsMessage]

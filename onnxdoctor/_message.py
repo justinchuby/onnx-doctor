@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import dataclasses
-
 from typing import Literal
-from onnxscript import ir
 
+from onnxscript import ir
 
 PossibleTargetTypes = Literal[
     "model",

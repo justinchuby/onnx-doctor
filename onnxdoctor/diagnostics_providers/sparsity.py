@@ -1,6 +1,9 @@
-import onnxdoctor
-from onnxscript import ir
+from __future__ import annotations
+
 import numpy as np
+from onnxscript import ir
+
+import onnxdoctor
 
 
 class SparsityAnalyzer(onnxdoctor.DiagnosticsProvider):
