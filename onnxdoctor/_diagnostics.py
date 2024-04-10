@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, Union
 
 from onnxscript import ir
 
@@ -10,9 +10,9 @@ from . import _message
 if typing.TYPE_CHECKING:
     from typing_extensions import TypeAlias
 
-DiagnosticsMessageIterator: TypeAlias = (
-    Iterable[_message.DiagnosticsMessage] | Iterator[_message.DiagnosticsMessage]
-)
+DiagnosticsMessageIterator: TypeAlias = Union[
+    Iterable[_message.DiagnosticsMessage], Iterator[_message.DiagnosticsMessage]
+]
 
 
 class DiagnosticsProvider:

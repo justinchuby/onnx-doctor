@@ -9,14 +9,7 @@ from . import _diagnostics, _message
 
 
 def diagnose(  # noqa: PLR0911
-    ir_object: ir.ModelProtocol
-    | ir.GraphProtocol
-    | ir.FunctionProtocol
-    | ir.NodeProtocol
-    | ir.TensorProtocol
-    | ir.ValueProtocol
-    | ir.AttributeProtocol
-    | ir.ReferenceAttributeProtocol,
+    ir_object: _message.PossibleTargets,
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
 ) -> Sequence[_message.DiagnosticsMessage]:
     if isinstance(ir_object, ir.ModelProtocol):
@@ -32,6 +25,8 @@ def diagnose(  # noqa: PLR0911
     if isinstance(ir_object, ir.ValueProtocol):
         return list(diagnose_value(ir_object, diagnostics_providers))
     if isinstance(ir_object, ir.AttributeProtocol):
+        return list(diagnose_attribute(ir_object, diagnostics_providers))
+    if isinstance(ir_object, ir.ReferenceAttributeProtocol):
         return list(diagnose_attribute(ir_object, diagnostics_providers))
     raise TypeError(f"Unknown IR object: {ir_object}")
 

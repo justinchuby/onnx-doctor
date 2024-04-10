@@ -18,10 +18,11 @@ PossibleTargetTypes = Literal[
 
 PossibleTargets = Union[
     ir.ModelProtocol,
+    ir.GraphProtocol,
     ir.NodeProtocol,
     ir.AttributeProtocol,
     ir.TensorProtocol,
-    ir.GraphProtocol,
+    ir.ValueProtocol,
     ir.FunctionProtocol,
     ir.ReferenceAttributeProtocol,
 ]
