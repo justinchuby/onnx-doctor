@@ -86,7 +86,7 @@ class TensorSnapshot:
     name: str | None
     dtype: str
     shape: str
-    value: Any
+    value: list[Any]
 
 
 @dataclasses.dataclass
@@ -136,7 +136,7 @@ def _capture_model(snapshot: Snapshot, model: ir.ModelProtocol):
         model_version=model.model_version,
         doc_string=model.doc_string,
         opset_imports=dict(model.opset_imports.items()),
-        metadata_props=model.metadata_props,
+        metadata_props=dict(model.metadata_props.items()),
         graph=id(model.graph),
         functions=[id(func) for func in model.functions.values()],
     )
@@ -151,9 +151,12 @@ def _capture_graph(snapshot: Snapshot, graph: ir.GraphProtocol | ir.GraphView):
         nodes=[id(node) for node in graph.nodes],
         inputs=[id(input_) for input_ in graph.inputs],
         outputs=[id(output) for output in graph.outputs],
-        initializers=[id(init) for init in graph.initializers],
+        # TODO: It is easy to mistakenly capture the name of the initializers if we forget to call value()
+        initializers=[id(init) for init in graph.initializers.values()],
         name=graph.name,
     )
+    for input_ in graph.inputs:
+        _capture_value(snapshot, input_)
     for node in graph.nodes:
         _capture_node(snapshot, node)
     for initializer in graph.initializers.values():
