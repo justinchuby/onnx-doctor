@@ -6,6 +6,7 @@ import dataclasses
 from typing import Any, Sequence
 
 from onnxscript import ir
+import onnx
 
 
 @dataclasses.dataclass
@@ -83,6 +84,7 @@ class FunctionSnapshot:
 @dataclasses.dataclass
 class TensorSnapshot:
     id: int
+    class_name: str
     name: str | None
     dtype: str
     shape: str
@@ -106,28 +108,43 @@ class Snapshot:
 
 
 def capture(
-    obj: ir.Model | ir.Graph | ir.Node | ir.Value | ir.Attr | ir.RefAttr | ir.Function,
-):
+    obj: ir.ModelProtocol | ir.GraphProtocol | ir.GraphView | ir.NodeProtocol | ir.FunctionProtocol,
+) -> Snapshot:
     """Capture a snapshot of the current state of the IR."""
     snapshot = Snapshot(id(obj), type(obj).__name__)
-    if isinstance(obj, ir.Model):
+    if isinstance(obj, ir.ModelProtocol):
         _capture_model(snapshot, obj)
-    elif isinstance(obj, ir.Graph):
+    elif isinstance(obj, (ir.GraphProtocol, ir.GraphView)):
         _capture_graph(snapshot, obj)
-    elif isinstance(obj, ir.Node):
+    elif isinstance(obj, ir.NodeProtocol):
         _capture_node(snapshot, obj)
-    elif isinstance(obj, ir.Value):
-        _capture_value(snapshot, obj)
-    elif isinstance(obj, ir.Attr):
-        _capture_attribute(snapshot, obj)
-    elif isinstance(obj, ir.RefAttr):
-        _capture_reference_attribute(snapshot, obj)
-    elif isinstance(obj, ir.Function):
+    elif isinstance(obj, ir.FunctionProtocol):
         _capture_function(snapshot, obj)
     return snapshot
 
 
-def _capture_model(snapshot: Snapshot, model: ir.ModelProtocol):
+def capture_proto(proto: onnx.ModelProto | onnx.GraphProto | onnx.NodeProto |  onnx.FunctionProto) -> Snapshot:
+    if isinstance(proto, onnx.ModelProto):
+        model = ir.serde.deserialize_model(proto)
+        snapshot = Snapshot(id(model), type(model).__name__)
+        _capture_model(snapshot, model)
+    elif isinstance(proto, onnx.GraphProto):
+        graph = ir.serde.deserialize_graph(proto)
+        snapshot = Snapshot(id(graph), type(graph).__name__)
+        _capture_graph(snapshot, graph)
+    elif isinstance(proto, onnx.NodeProto):
+        node = ir.serde.deserialize_node(proto)
+        snapshot = Snapshot(id(node), type(node).__name__)
+        _capture_node(snapshot, node)
+    elif isinstance(proto, onnx.FunctionProto):
+        func = ir.serde.deserialize_function(proto)
+        snapshot = Snapshot(id(func), type(func).__name__)
+        _capture_function(snapshot, func)
+
+    return snapshot
+
+
+def _capture_model(snapshot: Snapshot, model: ir.ModelProtocol, *, assign_id: bool=False):
     snapshot.model = ModelSnapshot(
         ir_version=model.ir_version,
         producer_name=model.producer_name,
@@ -140,9 +157,11 @@ def _capture_model(snapshot: Snapshot, model: ir.ModelProtocol):
         graph=id(model.graph),
         functions=[id(func) for func in model.functions.values()],
     )
-    _capture_graph(snapshot, model.graph)
+    if assign_id:
+        model.metadata_props["snapshot_id"] = str(id(model))
+    _capture_graph(snapshot, model.graph, assign_id=assign_id)
     for func in model.functions.values():
-        _capture_function(snapshot, func)
+        _capture_function(snapshot, func, assign_id=assign_id)
 
 
 def _capture_graph(snapshot: Snapshot, graph: ir.GraphProtocol | ir.GraphView):
@@ -253,6 +272,7 @@ def _capture_tensor(snapshot: Snapshot, tensor: ir.TensorProtocol):
         value = None
     snapshot.tensors[id(tensor)] = TensorSnapshot(
         id=id(tensor),
+        class_name=type(tensor).__name__,
         name=tensor.name,
         dtype=tensor.dtype.name,
         shape=str(tensor.shape),
