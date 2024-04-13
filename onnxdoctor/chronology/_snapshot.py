@@ -86,7 +86,7 @@ class TensorSnapshot:
     name: str | None
     dtype: str
     shape: str
-    value: list[Any]
+    value: list[Any] | None
 
 
 @dataclasses.dataclass
