@@ -80,7 +80,8 @@ class FunctionSnapshot:
     opset_imports: dict[str, int]
 
 
-class TensorSnapshot(ValueSnapshot):
+@dataclasses.dataclass
+class TensorSnapshot:
     id: int
     name: str | None
     dtype: str
@@ -109,6 +110,20 @@ def capture(
 ):
     """Capture a snapshot of the current state of the IR."""
     snapshot = Snapshot(id(obj), type(obj).__name__)
+    if isinstance(obj, ir.Model):
+        _capture_model(snapshot, obj)
+    elif isinstance(obj, ir.Graph):
+        _capture_graph(snapshot, obj)
+    elif isinstance(obj, ir.Node):
+        _capture_node(snapshot, obj)
+    elif isinstance(obj, ir.Value):
+        _capture_value(snapshot, obj)
+    elif isinstance(obj, ir.Attr):
+        _capture_attribute(snapshot, obj)
+    elif isinstance(obj, ir.RefAttr):
+        _capture_reference_attribute(snapshot, obj)
+    elif isinstance(obj, ir.Function):
+        _capture_function(snapshot, obj)
     return snapshot
 
 
@@ -140,10 +155,6 @@ def _capture_graph(snapshot: Snapshot, graph: ir.GraphProtocol | ir.GraphView):
         name=graph.name,
     )
     for node in graph.nodes:
-        for input_ in node.inputs:
-            _capture_value(snapshot, input_)
-        for output in node.outputs:
-            _capture_value(snapshot, output)
         _capture_node(snapshot, node)
     for initializer in graph.initializers.values():
         _capture_tensor(snapshot, initializer)
@@ -174,7 +185,8 @@ def _capture_node(snapshot: Snapshot, node: ir.NodeProtocol):
         attributes=[id(attr) if attr is not None else None for attr in node.attributes],
     )
     for input_ in node.inputs:
-        _capture_value(snapshot, input_)
+        if input_ is not None:
+            _capture_value(snapshot, input_)
     for output in node.outputs:
         _capture_value(snapshot, output)
     for attr in node.attributes.values():
