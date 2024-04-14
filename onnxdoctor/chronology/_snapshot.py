@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Sequence
+from typing import Any, Sequence, TypeVar
 
-from onnxscript import ir
 import onnx
-
+from onnxscript import ir
 
 METADATA_KEY_ID = "pkg.onnxdoctor.chronology.object_id"
 
@@ -42,7 +41,7 @@ class NodeSnapshot:
     domain: str
     op_type: str
     overload: str
-    inputs: list[int]
+    inputs: list[int | None]
     outputs: list[int]
     attributes: list[int | None]
 
@@ -138,30 +137,42 @@ def capture(
     return snapshot
 
 
-def capture_proto(
-    proto: onnx.ModelProto | onnx.GraphProto | onnx.NodeProto | onnx.FunctionProto,
-) -> Snapshot:
+TProto = TypeVar(
+    "TProto", onnx.ModelProto, onnx.GraphProto, onnx.NodeProto, onnx.FunctionProto
+)
+
+
+def capture_proto(proto: TProto) -> tuple[Snapshot, TProto]:
     if isinstance(proto, onnx.ModelProto):
         model = ir.serde.deserialize_model(proto)
         snapshot = Snapshot(id(model), type(model).__name__)
         _capture_model(snapshot, model, assign_id=True)
+        serialized = ir.serde.serialize_model(model)
     elif isinstance(proto, onnx.GraphProto):
         graph = ir.serde.deserialize_graph(proto)
         snapshot = Snapshot(id(graph), type(graph).__name__)
         _capture_graph(snapshot, graph, assign_id=True)
+        serialized = ir.serde.serialize_graph(graph)
     elif isinstance(proto, onnx.NodeProto):
         node = ir.serde.deserialize_node(proto)
         snapshot = Snapshot(id(node), type(node).__name__)
         _capture_node(snapshot, node, assign_id=True)
+        serialized = ir.serde.serialize_node(node)
     elif isinstance(proto, onnx.FunctionProto):
         func = ir.serde.deserialize_function(proto)
         snapshot = Snapshot(id(func), type(func).__name__)
         _capture_function(snapshot, func, assign_id=True)
+        serialized = ir.serde.serialize_function(func)
 
-    return snapshot
+    return snapshot, serialized
 
 
 def _get_or_create_id(obj: Any, assign_id: bool) -> int:
+    # Hack to create the metadata_props field
+    # TODO(justinchuby): We need to assign the object ID to the metadata_props of the protobuf object
+    # TODO: Attribute proto does not have metadata_props. ValueInfoProto does and needed to be added to the IR
+    if not hasattr(obj, "metadata_props"):
+        return id(obj)
     if obj.metadata_props.get(METADATA_KEY_ID) is not None:
         return int(obj.metadata_props[METADATA_KEY_ID])
     object_id = id(obj)
@@ -244,11 +255,14 @@ def _capture_node(
         domain=node.domain,
         op_type=node.op_type,
         overload=node.overload,
-        inputs=[_get_or_create_id(input_, assign_id) for input_ in node.inputs],
+        inputs=[
+            _get_or_create_id(input_, assign_id) if input_ is not None else None
+            for input_ in node.inputs
+        ],
         outputs=[_get_or_create_id(output, assign_id) for output in node.outputs],
         attributes=[
             _get_or_create_id(attr, assign_id) if attr is not None else None
-            for attr in node.attributes
+            for attr in node.attributes.values()
         ],
     )
     for input_ in node.inputs:
