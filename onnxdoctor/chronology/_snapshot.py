@@ -427,6 +427,9 @@ def _capture_attribute(
         value = [_get_or_create_id(tensor, assign_id) for tensor in attr.value]
         for tensor in attr.value:
             _capture_tensor(snapshot, tensor, assign_id=assign_id)
+    elif isinstance(attr.value, Sequence):
+        # Turn the RepeatedScalarContainer into a list so it is serializable
+        value = list(attr.value)
     else:
         value = attr.value
 
