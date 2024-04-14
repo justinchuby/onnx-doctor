@@ -142,39 +142,165 @@ TProto = TypeVar(
 )
 
 
-def capture_proto(proto: TProto) -> tuple[Snapshot, TProto]:
+def capture_proto(
+    proto: onnx.ModelProto | onnx.GraphProto | onnx.NodeProto | onnx.FunctionProto,
+) -> Snapshot:
     if isinstance(proto, onnx.ModelProto):
         model = ir.serde.deserialize_model(proto)
-        snapshot = Snapshot(id(model), type(model).__name__)
+        snapshot = Snapshot(
+            _get_or_create_id(model, assign_id=True), type(model).__name__
+        )
         _capture_model(snapshot, model, assign_id=True)
-        serialized = ir.serde.serialize_model(model)
+        _assign_id_to_model_proto(proto, model)
     elif isinstance(proto, onnx.GraphProto):
         graph = ir.serde.deserialize_graph(proto)
-        snapshot = Snapshot(id(graph), type(graph).__name__)
+        snapshot = Snapshot(
+            _get_or_create_id(graph, assign_id=True), type(graph).__name__
+        )
         _capture_graph(snapshot, graph, assign_id=True)
-        serialized = ir.serde.serialize_graph(graph)
+        _assign_id_to_graph_proto(proto, graph)
     elif isinstance(proto, onnx.NodeProto):
         node = ir.serde.deserialize_node(proto)
-        snapshot = Snapshot(id(node), type(node).__name__)
+        snapshot = Snapshot(
+            _get_or_create_id(node, assign_id=True), type(node).__name__
+        )
         _capture_node(snapshot, node, assign_id=True)
-        serialized = ir.serde.serialize_node(node)
+        _assign_id_to_node_proto(proto, node, {})
     elif isinstance(proto, onnx.FunctionProto):
         func = ir.serde.deserialize_function(proto)
-        snapshot = Snapshot(id(func), type(func).__name__)
+        snapshot = Snapshot(
+            _get_or_create_id(func, assign_id=True), type(func).__name__
+        )
         _capture_function(snapshot, func, assign_id=True)
-        serialized = ir.serde.serialize_function(func)
+        _assign_id_to_function_proto(proto, func)
 
-    return snapshot, serialized
+    return snapshot
 
 
-def _get_or_create_id(obj: Any, assign_id: bool) -> int:
+def _assign_id_to_proto(
+    proto: onnx.ModelProto
+    | onnx.GraphProto
+    | onnx.NodeProto
+    | onnx.FunctionProto
+    | onnx.TensorProto
+    | onnx.ValueInfoProto,
+    object_id: int,
+) -> None:
+    # Assign the object ID to the metadata_props of the protobuf object
+    for prop in proto.metadata_props:
+        if prop.key == METADATA_KEY_ID:
+            prop.value = str(object_id)
+            return
+    proto.metadata_props.append(
+        onnx.StringStringEntryProto(key=METADATA_KEY_ID, value=str(object_id))
+    )
+
+
+def _assign_id_to_model_proto(model_proto: onnx.ModelProto, model: ir.ModelProtocol):
+    _assign_id_to_proto(model_proto, _get_or_create_id(model))
+    _assign_id_to_graph_proto(model_proto.graph, model.graph)
+    for function_proto in model_proto.functions:
+        function = model.functions[function_proto.name]
+        _assign_id_to_function_proto(function_proto, function)
+
+
+def _assign_id_to_graph_proto(
+    graph_proto: onnx.GraphProto, graph: ir.GraphProtocol | ir.GraphView
+):
+    _assign_id_to_proto(graph_proto, _get_or_create_id(graph))
+    for value_proto, intput in zip(graph_proto.input, graph.inputs):
+        _assign_id_to_value_info_proto(value_proto, intput)
+    for value_proto, output in zip(graph_proto.output, graph.outputs):
+        _assign_id_to_value_info_proto(value_proto, output)
+    value_info_protos = {
+        value_info.name: value_info for value_info in graph_proto.value_info
+    }
+    for node_proto, node in zip(graph_proto.node, graph.nodes):
+        _assign_id_to_node_proto(node_proto, node, value_info_protos)
+    for tensor_proto in graph_proto.initializer:
+        tensor = graph.initializers[tensor_proto.name]
+        _assign_id_to_tensor_proto(tensor_proto, tensor)
+
+
+def _assign_id_to_node_proto(
+    node_proto: onnx.NodeProto,
+    node: ir.NodeProtocol,
+    value_info_protos: dict[str, onnx.ValueInfoProto],
+):
+    _assign_id_to_proto(node_proto, _get_or_create_id(node))
+    for input_name, input_ in zip(node_proto.input, node.inputs):
+        if input_ is not None:
+            if input_name not in value_info_protos:
+                # Not stored in the graph
+                continue
+            _assign_id_to_value_info_proto(value_info_protos[input_name], input_)
+    for output_name, output in zip(node_proto.output, node.outputs):
+        if output_name not in value_info_protos:
+            # Not stored in the graph
+            continue
+        _assign_id_to_value_info_proto(value_info_protos[output_name], output)
+    for attr_proto in node_proto.attribute:
+        attr = node.attributes[attr_proto.name]
+        if isinstance(attr, ir.ReferenceAttributeProtocol):
+            continue
+        _assign_id_to_attribute_proto(attr_proto, attr)
+
+
+def _assign_id_to_attribute_proto(
+    attr_proto: onnx.AttributeProto, attr: ir.AttributeProtocol
+):
+    if attr.type == ir.AttributeType.GRAPH:
+        _assign_id_to_graph_proto(attr_proto.g, attr.value)
+    elif attr.type == ir.AttributeType.TENSOR:
+        _assign_id_to_tensor_proto(attr_proto.t, attr.value)
+    elif attr.type == ir.AttributeType.GRAPHS:
+        for graph_proto, graph in zip(attr_proto.graphs, attr.value):
+            _assign_id_to_graph_proto(graph_proto, graph)
+    elif attr.type == ir.AttributeType.TENSORS:
+        for tensor_proto, tensor in zip(attr_proto.tensors, attr.value):
+            _assign_id_to_tensor_proto(tensor_proto, tensor)
+    # Otherwise don't care
+
+
+def _assign_id_to_tensor_proto(
+    tensor_proto: onnx.TensorProto, tensor: ir.TensorProtocol
+):
+    _assign_id_to_proto(tensor_proto, _get_or_create_id(tensor))
+
+
+def _assign_id_to_function_proto(
+    function_proto: onnx.FunctionProto, func: ir.FunctionProtocol
+):
+    _assign_id_to_proto(function_proto, _get_or_create_id(func))
+    value_info_protos = {
+        value_info.name: value_info for value_info in function_proto.value_info
+    }
+    for input_ in func.inputs:
+        _assign_id_to_value_info_proto(value_info_protos[input_.name], input_)
+    for output in func.outputs:
+        _assign_id_to_value_info_proto(value_info_protos[output.name], output)
+    for node_proto, node in zip(function_proto.node, func.nodes):
+        _assign_id_to_node_proto(node_proto, node, value_info_protos)
+
+
+def _assign_id_to_value_info_proto(
+    value_info_proto: onnx.ValueInfoProto, value: ir.ValueProtocol
+):
+    _assign_id_to_proto(value_info_proto, _get_or_create_id(value))
+
+
+def _get_or_create_id(obj: Any, assign_id: bool = False) -> int:
     # Hack to create the metadata_props field
     # TODO(justinchuby): We need to assign the object ID to the metadata_props of the protobuf object
     # TODO: Attribute proto does not have metadata_props. ValueInfoProto does and needed to be added to the IR
     if not hasattr(obj, "metadata_props"):
         return id(obj)
     if obj.metadata_props.get(METADATA_KEY_ID) is not None:
-        return int(obj.metadata_props[METADATA_KEY_ID])
+        try:
+            return int(obj.metadata_props[METADATA_KEY_ID])
+        except ValueError:
+            # If the ID is not an integer, we will reassign it
+            pass
     object_id = id(obj)
     if assign_id:
         obj.metadata_props[METADATA_KEY_ID] = str(object_id)
@@ -339,7 +465,12 @@ def _capture_tensor(
     tensor_id = _get_or_create_id(tensor, assign_id)
     size_limit = 100
     if tensor.size <= size_limit:
-        value = tensor.numpy().tolist()
+        try:
+            value = tensor.numpy().tolist()
+        except Exception:
+            # For any reason we cannot obtain the value. For example when
+            # the tensor is an external tensor and the path was not correctly set.
+            value = None
     else:
         value = None
     snapshot.tensors[tensor_id] = TensorSnapshot(
