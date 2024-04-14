@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Sequence, TypeVar
+from typing import Any, Sequence
 
 import onnx
 from onnxscript import ir
@@ -135,11 +135,6 @@ def capture(
     elif isinstance(obj, ir.FunctionProtocol):
         _capture_function(snapshot, obj, assign_id=assign_id)
     return snapshot
-
-
-TProto = TypeVar(
-    "TProto", onnx.ModelProto, onnx.GraphProto, onnx.NodeProto, onnx.FunctionProto
-)
 
 
 def capture_proto(
