@@ -1,0 +1,335 @@
+rules:
+  graph:
+    - code: empty-graph-name
+      # Category can be spec or ir
+      category: spec
+      message: The 'name' field of a graph is empty.
+      explanation: |
+        ## Details
+        The 'name' field of a graph must not be empty.
+
+        ## Example
+        ```python
+        # Set the name of the graph
+        graph.name = 'main_graph'
+        ```
+
+    - code: duplicate-input-output
+      category: ir
+      message: Input and output within a graph must be unique.
+      explanation: |
+        ## Details
+        Input and output names within a graph must be unique.
+
+        To fix this issue, remove the duplicated the input or output.
+
+        ## Example
+        ```python
+        # Remove duplicated outputs
+        # Use a dictionary to preserve order while removing duplicates
+        outputs = {}
+        for output in graph.outputs:
+            outputs[output] = None
+        graph.outputs[:] = list(outputs)
+        ```
+
+    - code: empty-initializer-name
+      category: spec
+      explanation: Initializers within a graph must have non-empty names.
+
+    - code: topological-order
+      category: spec
+      message: Nodes within the graph are not topologically sorted.
+      explanation: |
+        ## Details
+        Nodes within a graph must be in topologically sorted order.
+
+        To fix this issue, sort the nodes in topological order.
+
+        ## Example
+        ```python
+        # Sort the nodes in topological order
+        graph.sort()
+        ```
+
+    - code: unknown-input
+      category: spec
+      message: The input of a node within a GraphProto is not the output of a previous node.
+      explanation: |
+        ## Details
+        The input of a node within a GraphProto must be the output of a previous node.
+        This could happen when there is no node that produces the value this node is consuming.
+
+    - code: experimental-op-usage
+      category: spec
+      severity: warning
+      message: Usage of experimental operations should be avoided.
+      explanation: |
+        ## Details
+        The operator is experimental and may not be fully supported or stable.
+
+    - code : non-unique-value-name
+      category: spec
+      message: Value names of nodes must be unique.
+      explanation: |
+        ## Details
+        Value names of nodes within a graph must be unique.
+
+    - code: empty-value-name
+      category: ir
+      message: The 'name' field of a Value is empty.
+      explanation: |
+        ## Details
+        The 'name' field of a Value must not be empty.
+
+    - code: graph-output-not-from-any-node
+      category: spec
+      message: The graph output is not an output of a node within the same graph.
+      explanation: |
+        ## Details
+        Graph outputs within a Graph must be outputs of nodes within the same graph.
+
+  todo:
+  - code: graph-output-not-from-any-node
+    explanation: Graph outputs within a GraphProto must be outputs of nodes within the same graph.
+
+  - code: ssa-violation
+    explanation: "The GraphProto must be in Single Static Assignment (SSA) form, meaning each variable (tensor) is assigned exactly once. This error occurs when a variable is assigned multiple times within the graph, violating the SSA form."
+  - code: empty-value-info-name
+    explanation: The 'name' field of a ValueInfoProto must not be empty.
+  - code: invalid-tensor-type
+    explanation: The 'type' field of a TensorTypeProto in a ValueInfoProto must be present and valid.
+  - code: invalid-optional-type
+    explanation: The 'type' field of an OptionalTypeProto in a ValueInfoProto must be present and valid.
+  - code: invalid-sequence-type
+    explanation: The 'type' field of a SequenceTypeProto in a ValueInfoProto must be present and valid.
+  - code: invalid-map-type
+    explanation: The 'type' field of a MapTypeProto in a ValueInfoProto must be present and valid.
+  - code: unrecognized-type-value-case
+    explanation: The 'type' field of a ValueInfoProto contains an unrecognized value case.
+  - code: undefined-tensor-data-type
+    explanation: The 'data_type' field of a TensorProto must be defined and not set to UNDEFINED.
+  - code: tensor-data-field-mismatch
+    explanation: The data field of a TensorProto does not match the specified data type.
+  - code: externally-stored-tensor-has-data-field
+    explanation: Externally stored tensors should not have data fields.
+  - code: externally-stored-tensor-missing-location
+    explanation: Externally stored tensors must have a 'location' specified.
+  - code: zero-element-tensor-has-data
+    explanation: A tensor with zero elements should not contain any data.
+  - code: multi-value-field-for-non-zero-element-tensor
+    explanation: A tensor with non-zero elements should contain exactly one value field.
+  - code: string-data-in-raw-data-field
+    explanation: STRING data should not be stored in the raw_data field of a TensorProto.
+  - code: invalid-sparse-tensor-indices-size
+    explanation: The size of the indices field in a SparseTensorProto does not match the number of non-zero elements (NNZ).
+  - code: sparse-tensor-indices-out-of-range
+    explanation: Indices in a SparseTensorProto are out of range.
+  - code: unsorted-sparse-tensor-indices
+    explanation: Indices in a SparseTensorProto are not in sorted order.
+  - code: sparse-tensor-indices-not-in-lexicographic-order
+    explanation: Indices in a SparseTensorProto are not in lexicographic sorted order.
+  - code: attribute-multiple-value-fields
+    explanation: An attribute should not contain more than one value field.
+  - code: attribute-refers-to-parent-attribute-but-has-value-field
+    explanation: An attribute referring to a parent attribute should not have its own value field set.
+  - code: invalid-opset-import
+    explanation: No opset import found for the domain referenced by the node.
+  - code: deprecated-op
+    explanation: The operator referenced by the node is deprecated.
+  - code: no-op-registered
+    explanation: No operator is registered for the domain and version referenced by the node.
+  - code: op-is-deprecated
+    explanation: The operator referenced by the node is deprecated in the specified domain version.
+  - code: no-opset-registered
+    explanation: No Opset registered for the specified domain.
+
+  - code: opset-import-missing
+    explanation: Opset import for a node in the model is missing in the function body.
+
+  - code: incompatible-opset-versions
+    explanation: Opset versions imported by the function and the model are incompatible.
+
+  - code: ssa-form-multiple-usage
+    explanation: Graph must be in single static assignment (SSA) form, however, a variable has been used multiple times.
+
+  - code: duplicate-function-outputs
+    explanation: Function should not have duplicate outputs specified.
+
+  - code: duplicate-function-attributes
+    explanation: Function should not have duplicate attributes specified.
+
+  - code: unsorted-function-nodes
+    explanation: Nodes in a function must be topologically sorted.
+
+  - code: ssa-form-multiple-outputs
+    explanation: Function must be in single static assignment (SSA) form, however, a variable has been used as output names multiple times.
+
+  - code: external-tensorpath-absolute
+    explanation: Location of external TensorProto should be a relative path, but it is specified as an absolute path.
+
+  - code: empty-external-tensorpath
+    explanation: Location of external TensorProto should not be empty.
+
+  - code: external-tensorpath-outside-directory
+    explanation: Location of external TensorProto points outside the specified directory.
+
+  - code: invalid-tensorpath
+    explanation: Data of TensorProto should be stored in a valid location, but it either doesn't exist or is not accessible.
+
+  - code: non-regular-file
+    explanation: Data of TensorProto should be stored in a regular file.
+
+  - code: invalid-ir-version
+    explanation: Model does not have an ir_version set properly.
+
+  - code: higher-ir-version
+    explanation: Model ir_version is higher than the checker's.
+
+  - code: duplicate-metadata-props
+    explanation: Model has duplicate keys in metadata_props.
+
+  - code: missing-opset-import
+    explanation: Model with IR version >= 3 must specify opset_import for ONNX.
+
+  - code: invalid-opset-import
+    explanation: Model with IR version < 3 cannot have opset_import specified.
+  - code: opset-no-registered-domain
+    explanation: No Opset is registered for the domain specified in the node.
+
+  - code: opset-model-missing-import
+    explanation: The model does not include an opset import for a node present in a function body.
+
+  - code: opset-version-mismatch
+    explanation: Opset versions imported by the function and the model are not compatible.
+
+  - code: opset-schema-not-found
+    explanation: Schemas for the specified op and opset versions are not found, possibly because the op belongs to a custom domain.
+
+  - code: function-no-name
+    explanation: The name field of a function must not be empty.
+
+  - code: function-no-domain
+    explanation: For IR versions greater than or equal to 8, functions must specify the domain.
+
+  - code: function-input-multiple-uses
+    explanation: Function inputs must have unique names and cannot be used multiple times.
+
+  - code: function-duplicate-outputs
+    explanation: Functions should not have duplicate outputs specified.
+
+  - code: function-duplicate-attributes
+    explanation: Functions should not have duplicate attributes specified.
+
+  - code: function-topological-sorting
+    explanation: Nodes in a function must be in topologically sorted order, and each node's inputs should come from outputs of previous nodes.
+
+  - code: function-output-non-unique-name
+    explanation: Function output names must be unique within the function.
+
+  - code: function-not-in-ssa-form
+    explanation: Functions must be in single static assignment (SSA) form, meaning each variable is assigned exactly once.
+
+  - code: function-opset-incompatible
+    explanation: Opset import for a domain in the function's operation is not compatible with the version imported by the model.
+
+  - code: model-no-ir-version
+    explanation: The model does not have the ir_version set properly.
+
+  - code: model-ir-version-higher-than-checker
+    explanation: The model's ir_version is higher than the checker's ir_version.
+
+  - code: model-duplicate-metadata-keys
+    explanation: The model has duplicate keys in metadata_props.
+
+  - code: model-no-opset-import-ir3
+    explanation: Models with IR version greater than or equal to 3 must specify opset_import for ONNX.
+
+  - code: model-opset-import-not-specified
+    explanation: Models with IR version less than 3 cannot have opset_import specified.
+
+  - code: external-tensor-relative-path
+    explanation: Location of an external TensorProto should be a relative path, not an absolute path.
+
+  - code: external-tensor-outside-directory
+    explanation: The location of an external TensorProto points outside the specified directory.
+
+  - code: external-tensor-path-not-accessible
+    explanation: The location of an external TensorProto does not exist or is not accessible.
+
+  - code: external-tensor-empty-location
+    explanation: The location of an external TensorProto should not be empty.
+
+  - code: external-tensor-not-regular-file
+    explanation: Data of an external TensorProto should be stored in a regular file, not a directory or a symlink.
+  - code: shape-inference-failure
+    explanation: |
+      An error occurred during shape inference for the given model or function. This error indicates that the shape inference process failed to determine the shapes of one or more tensors in the model or function.
+
+  - code: function-opset-imports-error
+    explanation: |
+      An error occurred while retrieving the opset imports for a function. This error indicates that there was an issue extracting opset imports from the function's definition.
+
+  - code: graph-opset-imports-error
+    explanation: |
+      An error occurred while retrieving the opset imports for a graph. This error indicates that there was an issue extracting opset imports from the graph's definition.
+
+  - code: invalid-inputs-error
+    explanation: |
+      An error occurred due to invalid inputs provided to the shape inference process. This error indicates that the inputs provided to the shape inference process were not valid or were incompatible with the model or function being analyzed.
+
+  - code: initializer-name-conflict-error
+    explanation: |
+      An error occurred due to conflicting names between initializers and subgraph inputs. This error indicates that there was a naming conflict between initializers and subgraph inputs, which is not allowed.
+
+  - code: graph-input-mismatch-error
+    explanation: |
+      An error occurred due to a mismatch between the number of graph inputs and the number of provided inputs. This error indicates that the number of inputs provided to the graph does not match the expected number of inputs.
+
+  - code: missing-input-error
+    explanation: |
+      An error occurred due to missing inputs for the shape inference process. This error indicates that one or more required inputs were missing, which prevented the shape inference process from completing successfully.
+
+  - code: infer-function-output-types-error
+    explanation: |
+      An error occurred during the inference of function output types. This error indicates that there was an issue while inferring the output types of a function, which prevented the process from completing successfully.
+
+  - code: symbol-table-update-error
+    explanation: |
+      An error occurred while updating the symbol table. This error indicates that there was an issue updating the symbol table during the shape inference process.
+
+  - code: node-processing-error
+    explanation: |
+      An error occurred during the processing of a node. This error indicates that there was an issue processing a node in the model or function being analyzed, which prevented the shape inference process from completing successfully.
+
+  - code: subgraph-processing-error
+    explanation: |
+      An error occurred during the processing of a subgraph. This error indicates that there was an issue processing a subgraph within the model or function being analyzed, which prevented the shape inference process from completing successfully.
+
+  - code: unsupported-operation-error
+    explanation: |
+      An error occurred due to an unsupported operation encountered during shape inference. This error indicates that the shape inference process encountered an operation that is not supported, which prevented the process from completing successfully.
+  - code: mismatched-element-types
+    explanation: |
+      The inferred element type of a tensor does not match the existing element type.
+  - code: rank-mismatch
+    explanation: |
+      The inferred shape and existing shape have different ranks.
+  - code: dimension-size-mismatch
+    explanation: |
+      The inferred shape and existing shape differ in dimension sizes.
+  - code: unsupported-type-case
+    explanation: |
+      The type case encountered during shape inference is unsupported.
+  - code: unsupported-operation
+    explanation: |
+      The shape inference encountered an unsupported operation.
+  - code: incomplete-schema-information
+    explanation: |
+      The schema for the operation is not defined or incomplete.
+  - code: inconsistent-initializer-information
+    explanation: |
+      There is inconsistency between the information provided in the initializers and the input/output definitions.
+  - code: subgraph-initializer-duplicate-name
+    explanation: |
+      Cannot use the same name as both a subgraph initializer and subgraph input.
