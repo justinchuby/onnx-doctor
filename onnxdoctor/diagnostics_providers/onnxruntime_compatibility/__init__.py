@@ -61,7 +61,10 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
     def __init__(self, execution_provider: str = "CPUExecutionProvider"):
         self.execution_provider = execution_provider
         self.ir_version = None
-        with open(pathlib.Path(__file__).parent / "ort_supported_schemas.json", encoding="utf-8") as f:
+        with open(
+            pathlib.Path(__file__).parent / "ort_supported_schemas.json",
+            encoding="utf-8",
+        ) as f:
             support_table = json.load(f)
         self.support_table = _get_op_support_table(support_table)
         self.opset_imports = {}
