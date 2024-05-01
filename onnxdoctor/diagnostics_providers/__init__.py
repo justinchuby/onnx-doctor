@@ -5,5 +5,5 @@ __all__ = [
     "SparsityAnalyzer",
 ]
 
-from .onnxruntime_comparibility import OnnxRuntimeCompatibilityLinter
+from .onnxruntime_compatibility import OnnxRuntimeCompatibilityLinter
 from .sparsity import SparsityAnalyzer
