@@ -41,6 +41,9 @@ Source = "https://github.com/justinchuby/onnx-doctor"
 [tool.setuptools.packages.find]
 include = ["onnxdoctor*"]
 
+[tool.setuptools.package-data]
+onnxdoctor = ["*.json"]
+
 [tool.pydocstyle]
 convention = "google"
 
