@@ -27,9 +27,7 @@ class DiagnosticsProvider:
         return
         yield
 
-    def check_function(
-        self, function: ir.Function
-    ) -> DiagnosticsMessageIterator:
+    def check_function(self, function: ir.Function) -> DiagnosticsMessageIterator:
         del function
         return
         yield
@@ -44,9 +42,7 @@ class DiagnosticsProvider:
         return
         yield
 
-    def check_attribute(
-        self, attr: ir.Attr
-    ) -> DiagnosticsMessageIterator:
+    def check_attribute(self, attr: ir.Attr) -> DiagnosticsMessageIterator:
         del attr
         return
         yield

@@ -55,9 +55,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         self._opset_imports: dict[str, int] = {}
         self._model_dir: pathlib.Path | None = None
 
-    def check_model(
-        self, model: ir.Model
-    ) -> onnx_doctor.DiagnosticsMessageIterator:
+    def check_model(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
         self._ir_version = model.ir_version
         self._opset_imports = dict(model.opset_imports)
 
@@ -108,9 +106,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         ):
             yield _emit(_rule("ONNX016"), "model", model)
 
-    def check_graph(
-        self, graph: ir.Graph
-    ) -> onnx_doctor.DiagnosticsMessageIterator:
+    def check_graph(self, graph: ir.Graph) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX001: empty-graph-name
         if not graph.name:
             yield _emit(_rule("ONNX001"), "graph", graph)
@@ -119,23 +115,31 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         for value in graph.inputs:
             if value.type is None:
                 yield _emit(
-                    _rule("ONNX036"), "graph", graph,
+                    _rule("ONNX036"),
+                    "graph",
+                    graph,
                     message=f"Graph input '{value.name}' is missing type information.",
                 )
             elif value.shape is None:
                 yield _emit(
-                    _rule("ONNX037"), "graph", graph,
+                    _rule("ONNX037"),
+                    "graph",
+                    graph,
                     message=f"Graph input '{value.name}' is missing shape information.",
                 )
         for value in graph.outputs:
             if value.type is None:
                 yield _emit(
-                    _rule("ONNX036"), "graph", graph,
+                    _rule("ONNX036"),
+                    "graph",
+                    graph,
                     message=f"Graph output '{value.name}' is missing type information.",
                 )
             elif value.shape is None:
                 yield _emit(
-                    _rule("ONNX037"), "graph", graph,
+                    _rule("ONNX037"),
+                    "graph",
+                    graph,
                     message=f"Graph output '{value.name}' is missing shape information.",
                 )
 
@@ -182,7 +186,11 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 if inp not in known_values:
                     # Value not yet produced in this graph — check if it's
                     # from an outer scope (valid in subgraphs) or truly unknown
-                    if inp.producer() is not None or inp.is_graph_input() or inp.is_initializer():
+                    if (
+                        inp.producer() is not None
+                        or inp.is_graph_input()
+                        or inp.is_initializer()
+                    ):
                         # Produced elsewhere (outer graph) — only a topo-sort issue
                         is_sorted = False
                     else:
@@ -278,9 +286,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                                 message=f"Initializer '{sub_input.name}' conflicts with subgraph input name.",
                             )
 
-    def check_node(
-        self, node: ir.Node
-    ) -> onnx_doctor.DiagnosticsMessageIterator:
+    def check_node(self, node: ir.Node) -> onnx_doctor.DiagnosticsMessageIterator:
         domain = node.domain if node.domain else ""
 
         # ONNX017: missing-opset-for-domain
@@ -313,9 +319,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 message=f"No schema found for '{domain}::{node.op_type}' at opset version {opset_version}.",
             )
 
-    def check_value(
-        self, value: ir.Value
-    ) -> onnx_doctor.DiagnosticsMessageIterator:
+    def check_value(self, value: ir.Value) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX102: empty-value-name
         if not value.name:
             yield _emit(_rule("ONNX102"), "node", value)
@@ -338,9 +342,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     message=f"Value '{value.name}' has tensor type with UNDEFINED dtype.",
                 )
 
-    def check_tensor(
-        self, tensor: ir.Tensor
-    ) -> onnx_doctor.DiagnosticsMessageIterator:
+    def check_tensor(self, tensor: ir.Tensor) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX022: undefined-tensor-dtype
         if tensor.dtype == ir.DataType.UNDEFINED:
             yield _emit(

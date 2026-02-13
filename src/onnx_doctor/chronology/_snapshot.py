@@ -111,11 +111,7 @@ class Snapshot:
 
 
 def capture(
-    obj: ir.Model
-    | ir.Graph
-    | ir.GraphView
-    | ir.Node
-    | ir.Function,
+    obj: ir.Model | ir.Graph | ir.GraphView | ir.Node | ir.Function,
     assign_id: bool = False,
 ) -> Snapshot:
     """Capture a snapshot of the current state of the IR.
@@ -242,9 +238,7 @@ def _assign_id_to_node_proto(
         _assign_id_to_attribute_proto(attr_proto, attr)
 
 
-def _assign_id_to_attribute_proto(
-    attr_proto: onnx.AttributeProto, attr: ir.Attr
-):
+def _assign_id_to_attribute_proto(attr_proto: onnx.AttributeProto, attr: ir.Attr):
     if attr.type == ir.AttributeType.GRAPH:
         _assign_id_to_graph_proto(attr_proto.g, attr.value)
     elif attr.type == ir.AttributeType.TENSOR:
@@ -258,15 +252,11 @@ def _assign_id_to_attribute_proto(
     # Otherwise don't care
 
 
-def _assign_id_to_tensor_proto(
-    tensor_proto: onnx.TensorProto, tensor: ir.Tensor
-):
+def _assign_id_to_tensor_proto(tensor_proto: onnx.TensorProto, tensor: ir.Tensor):
     _assign_id_to_proto(tensor_proto, _get_or_create_id(tensor))
 
 
-def _assign_id_to_function_proto(
-    function_proto: onnx.FunctionProto, func: ir.Function
-):
+def _assign_id_to_function_proto(function_proto: onnx.FunctionProto, func: ir.Function):
     _assign_id_to_proto(function_proto, _get_or_create_id(func))
     value_info_protos = {
         value_info.name: value_info for value_info in function_proto.value_info
@@ -303,9 +293,7 @@ def _get_or_create_id(obj: Any, assign_id: bool = False) -> int:
     return object_id
 
 
-def _capture_model(
-    snapshot: Snapshot, model: ir.Model, *, assign_id: bool = False
-):
+def _capture_model(snapshot: Snapshot, model: ir.Model, *, assign_id: bool = False):
     snapshot.model = ModelSnapshot(
         ir_version=model.ir_version,
         producer_name=model.producer_name,
@@ -368,9 +356,7 @@ def _capture_function(
     )
 
 
-def _capture_node(
-    snapshot: Snapshot, node: ir.Node, *, assign_id: bool = False
-):
+def _capture_node(snapshot: Snapshot, node: ir.Node, *, assign_id: bool = False):
     node_id = _get_or_create_id(node, assign_id)
     snapshot.nodes[node_id] = NodeSnapshot(
         id=node_id,
@@ -399,9 +385,7 @@ def _capture_node(
             _capture_attribute(snapshot, attr, assign_id=assign_id)
 
 
-def _capture_value(
-    snapshot: Snapshot, value: ir.Value, *, assign_id: bool = False
-):
+def _capture_value(snapshot: Snapshot, value: ir.Value, *, assign_id: bool = False):
     value_id = _get_or_create_id(value, assign_id)
     snapshot.values[value_id] = ValueSnapshot(
         id=value_id,
@@ -411,9 +395,7 @@ def _capture_value(
     )
 
 
-def _capture_attribute(
-    snapshot: Snapshot, attr: ir.Attr, *, assign_id: bool = False
-):
+def _capture_attribute(snapshot: Snapshot, attr: ir.Attr, *, assign_id: bool = False):
     if attr.type == ir.AttributeType.GRAPH:
         value = _get_or_create_id(attr.value, assign_id)
         _capture_graph(snapshot, attr.value)
@@ -455,9 +437,7 @@ def _capture_reference_attribute(
     )
 
 
-def _capture_tensor(
-    snapshot: Snapshot, tensor: ir.Tensor, *, assign_id: bool = False
-):
+def _capture_tensor(snapshot: Snapshot, tensor: ir.Tensor, *, assign_id: bool = False):
     tensor_id = _get_or_create_id(tensor, assign_id)
     size_limit = 100
     if tensor.size <= size_limit:

@@ -24,9 +24,7 @@ class SparsityAnalyzer(onnx_doctor.DiagnosticsProvider):
     def __init__(self, threshold: float = 1e-5):
         self.threshold = threshold
 
-    def check_tensor(
-        self, tensor: ir.Tensor
-    ) -> onnx_doctor.DiagnosticsMessageIterator:
+    def check_tensor(self, tensor: ir.Tensor) -> onnx_doctor.DiagnosticsMessageIterator:
         array = tensor.numpy()
         sparsity = np.count_nonzero(np.abs(array) <= self.threshold) / array.size
         if tensor is not None:

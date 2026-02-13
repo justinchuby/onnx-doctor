@@ -125,9 +125,7 @@ class OnnxRuntimeCompatibilityLinter(onnx_doctor.DiagnosticsProvider):
         self.opset_imports = {}
         self.imported_functions = set()
 
-    def check_model(
-        self, model: ir.Model
-    ) -> onnx_doctor.DiagnosticsMessageIterator:
+    def check_model(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
         self.ir_version = model.ir_version
         self.opset_imports = model.opset_imports
         self.imported_functions = set(model.functions)

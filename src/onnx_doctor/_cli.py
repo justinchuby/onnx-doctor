@@ -94,11 +94,7 @@ def _filter_messages(
         ]
     else:
         # No --select: exclude default-disabled rules
-        filtered = [
-            m
-            for m in filtered
-            if m.rule is None or m.rule.default_enabled
-        ]
+        filtered = [m for m in filtered if m.rule is None or m.rule.default_enabled]
 
     if ignore is not None:
         filtered = [
