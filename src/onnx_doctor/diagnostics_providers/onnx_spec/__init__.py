@@ -204,16 +204,16 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 if inp is None:
                     continue
                 if inp not in known_values:
-                    # Value not yet produced in this graph — check if it's
-                    # from an outer scope (valid in subgraphs) or truly unknown
-                    if (
-                        inp.producer() is not None
-                        or inp.is_graph_input()
-                        or inp.is_initializer()
-                    ):
-                        # Produced elsewhere (outer graph) — only a topo-sort issue
+                    producer = inp.producer()
+                    if producer is not None and producer.graph is graph:
+                        # Producer is in this graph but hasn't been seen yet — unsorted
                         is_sorted = False
-                    else:
+                    elif (
+                        producer is None
+                        and not inp.is_graph_input()
+                        and not inp.is_initializer()
+                    ):
+                        # Truly unknown value — not from any scope
                         is_sorted = False
                         # ONNX005: unknown-node-input
                         yield _emit(
@@ -222,6 +222,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                             graph,
                             message=f"Node '{node.op_type}' has input '{inp.name}' not produced by any node or graph input.",
                         )
+                    # Otherwise: outer-scope reference (parent graph input/initializer/node) — not a sort issue
             for out in node.outputs:
                 known_values.add(out)
 

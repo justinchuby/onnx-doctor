@@ -58,6 +58,56 @@ class OnnxSpecProviderModelTest(unittest.TestCase):
         messages = _diagnose(model)
         self.assertNotIn("ONNX014", _codes(messages))
 
+    def test_no_false_onnx004_for_subgraph_with_outer_scope_input(self):
+        """Subgraph referencing a parent graph input should not trigger ONNX004."""
+        # Parent graph: X -> Relu -> relu_out -> Loop(body uses X from outer scope)
+        x = ir.Value(
+            name="X", type=ir.TensorType(ir.DataType.FLOAT), shape=ir.Shape([1])
+        )
+        relu = ir.Node("", "Relu", inputs=[x], name="relu")
+        relu_out = relu.outputs[0]
+        relu_out.name = "relu_out"
+
+        # Subgraph body: uses x (parent graph input) as an input to Add
+        sub_in = ir.Value(name="sub_in")
+        sub_add = ir.Node("", "Add", inputs=[sub_in, x], name="sub_add")
+        sub_out = sub_add.outputs[0]
+        sub_out.name = "sub_out"
+
+        subgraph = ir.Graph(
+            inputs=[sub_in],
+            outputs=[sub_out],
+            nodes=[sub_add],
+            name="body",
+            opset_imports={"": 21},
+        )
+
+        body_attr = ir.Attr("body", ir.AttributeType.GRAPH, subgraph)
+        loop_node = ir.Node("", "Loop", [relu_out], [body_attr], name="loop")
+        loop_out = loop_node.outputs[0]
+        loop_out.name = "Y"
+        loop_out.type = ir.TensorType(ir.DataType.FLOAT)
+        loop_out.shape = ir.Shape([1])
+
+        graph = ir.Graph(
+            inputs=[x],
+            outputs=[loop_out],
+            nodes=[relu, loop_node],
+            name="main",
+            opset_imports={"": 21},
+        )
+        model = ir.Model(graph, ir_version=10)
+        model.opset_imports[""] = 21
+
+        messages = _diagnose(model)
+        codes = _codes(messages)
+        self.assertNotIn(
+            "ONNX004", codes, "Outer-scope input should not cause false ONNX004"
+        )
+        self.assertNotIn(
+            "ONNX005", codes, "Outer-scope input should not cause false ONNX005"
+        )
+
 
 class OnnxSpecProviderNodeTest(unittest.TestCase):
     def test_unregistered_op(self):
