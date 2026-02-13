@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing
 from typing import Iterable, Sequence
 
-from onnxscript import ir
+import onnx_ir as ir
 
 from . import _diagnostics, _message
 

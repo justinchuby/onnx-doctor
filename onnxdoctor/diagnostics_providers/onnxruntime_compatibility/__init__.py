@@ -7,7 +7,7 @@ import dataclasses
 import json
 import pathlib
 
-from onnxscript import ir
+import onnx_ir as ir
 
 import onnxdoctor
 

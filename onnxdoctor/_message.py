@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Literal, Union
 
-from onnxscript import ir
+import onnx_ir as ir
 
 PossibleTargetTypes = Literal[
     "model",

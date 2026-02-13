@@ -6,7 +6,7 @@ import dataclasses
 from typing import Any, Sequence
 
 import onnx
-from onnxscript import ir
+import onnx_ir as ir
 
 METADATA_KEY_ID = "pkg.onnxdoctor.chronology.object_id"
 
