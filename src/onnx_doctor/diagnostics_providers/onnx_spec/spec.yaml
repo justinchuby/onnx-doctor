@@ -15,7 +15,7 @@ rules:
         graph.name = 'main_graph'
         ```
 
-    - code: ONNX002
+    - code: ONNX101
       name: duplicate-graph-io
       category: ir
       severity: error
@@ -97,7 +97,7 @@ rules:
         All value names within a graph must be unique to maintain SSA form
         and ensure unambiguous value references.
 
-    - code: ONNX008
+    - code: ONNX102
       name: empty-value-name
       category: ir
       severity: warning

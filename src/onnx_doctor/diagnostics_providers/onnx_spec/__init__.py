@@ -115,13 +115,13 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         if not graph.name:
             yield _emit(_rule("ONNX001"), "graph", graph)
 
-        # ONNX002: duplicate-graph-io
+        # ONNX101: duplicate-graph-io
         seen_ids: set[int] = set()
         for value in graph.inputs:
             vid = id(value)
             if vid in seen_ids:
                 yield _emit(
-                    _rule("ONNX002"),
+                    _rule("ONNX101"),
                     "graph",
                     graph,
                     message=f"Duplicate Value object in graph inputs: '{value.name}'.",
@@ -132,7 +132,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             vid = id(value)
             if vid in seen_ids:
                 yield _emit(
-                    _rule("ONNX002"),
+                    _rule("ONNX101"),
                     "graph",
                     graph,
                     message=f"Duplicate Value object in graph outputs: '{value.name}'.",
@@ -287,9 +287,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
     def check_value(
         self, value: ir.ValueProtocol
     ) -> onnx_doctor.DiagnosticsMessageIterator:
-        # ONNX008: empty-value-name
+        # ONNX102: empty-value-name
         if not value.name:
-            yield _emit(_rule("ONNX008"), "node", value)
+            yield _emit(_rule("ONNX102"), "node", value)
 
         # ONNX020: missing-value-type
         if value.type is None:
