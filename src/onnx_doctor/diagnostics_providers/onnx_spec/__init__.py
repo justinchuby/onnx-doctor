@@ -25,7 +25,7 @@ def _rule(code: str) -> Rule:
 
 def _emit(
     rule: Rule,
-    target_type: onnx_doctor.DiagnosticsMessage.target_type,
+    target_type: onnx_doctor._message.PossibleTargetTypes,
     target: object,
     message: str | None = None,
     suggestion: str | None = None,
@@ -187,7 +187,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     _rule("ONNX003"),
                     "graph",
                     graph,
-                    fix=self._name_fix,
+                    fix=lambda: _apply_name_fix(self._model),
                 )
 
         # Collect known values for topological order check
@@ -294,7 +294,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     "graph",
                     graph,
                     message=f"Graph output '{out.name}' is produced in a different graph.",
-                    fix=self._output_fix,
+                    fix=lambda: _apply_output_fix(self._model),
                 )
 
         # ONNX011: initializer-name-conflict
@@ -357,7 +357,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 _rule("ONNX102"),
                 "node",
                 value,
-                fix=self._name_fix,
+                fix=lambda: _apply_name_fix(self._model),
             )
 
         # ONNX020: missing-value-type
@@ -551,18 +551,16 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                         ),
                     )
 
-    def _name_fix(self) -> None:
-        """Apply NameFixPass to auto-name all values and nodes."""
-        if self._model is None:
-            return
-        from onnx_ir.passes.common import NameFixPass  # noqa: PLC0415
 
-        NameFixPass()(self._model)
+def _apply_name_fix(model: ir.Model) -> None:
+    """Apply NameFixPass to auto-name all values and nodes."""
+    from onnx_ir.passes.common import NameFixPass  # noqa: PLC0415
 
-    def _output_fix(self) -> None:
-        """Apply OutputFixPass to insert Identity nodes for invalid outputs."""
-        if self._model is None:
-            return
-        from onnx_ir.passes.common import OutputFixPass  # noqa: PLC0415
+    NameFixPass()(model)
 
-        OutputFixPass()(self._model)
+
+def _apply_output_fix(model: ir.Model) -> None:
+    """Apply OutputFixPass to insert Identity nodes for invalid outputs."""
+    from onnx_ir.passes.common import OutputFixPass  # noqa: PLC0415
+
+    OutputFixPass()(model)

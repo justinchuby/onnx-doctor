@@ -39,12 +39,8 @@ class SimplificationProviderTest(unittest.TestCase):
 
     def test_sim003_unused_nodes(self):
         """A model with a dead node should trigger SIM003."""
-        x_info = onnx.helper.make_tensor_value_info(
-            "X", onnx.TensorProto.FLOAT, [1, 3]
-        )
-        y_info = onnx.helper.make_tensor_value_info(
-            "Y", onnx.TensorProto.FLOAT, [1, 3]
-        )
+        x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1, 3])
+        y_info = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1, 3])
         relu_node = onnx.helper.make_node("Relu", ["X"], ["Y"])
         # Dead node — output "Z" is not a graph output
         dead_node = onnx.helper.make_node("Neg", ["X"], ["Z"])
@@ -60,12 +56,8 @@ class SimplificationProviderTest(unittest.TestCase):
 
     def test_sim003_fix_removes_unused_nodes(self):
         """Applying the SIM003 fix should remove unused nodes."""
-        x_info = onnx.helper.make_tensor_value_info(
-            "X", onnx.TensorProto.FLOAT, [1, 3]
-        )
-        y_info = onnx.helper.make_tensor_value_info(
-            "Y", onnx.TensorProto.FLOAT, [1, 3]
-        )
+        x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1, 3])
+        y_info = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1, 3])
         relu_node = onnx.helper.make_node("Relu", ["X"], ["Y"])
         dead_node = onnx.helper.make_node("Neg", ["X"], ["Z"])
         graph = onnx.helper.make_graph(

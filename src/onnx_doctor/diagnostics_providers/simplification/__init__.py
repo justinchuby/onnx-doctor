@@ -18,7 +18,7 @@ def _rule(code: str) -> Rule:
 
 def _emit(
     rule: Rule,
-    target_type: onnx_doctor.DiagnosticsMessage.target_type,
+    target_type: onnx_doctor._message.PossibleTargetTypes,
     target: object,
     message: str | None = None,
     suggestion: str | None = None,
@@ -69,9 +69,7 @@ class SimplificationProvider(onnx_doctor.DiagnosticsProvider):
                 if (f.domain or "", f.name or "") not in used_ids
             ]
             if unused_funcs:
-                names = ", ".join(
-                    f"'{f.domain or ''}:{f.name}'" for f in unused_funcs
-                )
+                names = ", ".join(f"'{f.domain or ''}:{f.name}'" for f in unused_funcs)
                 yield _emit(
                     _rule("SIM001"),
                     "model",
@@ -90,9 +88,7 @@ class SimplificationProvider(onnx_doctor.DiagnosticsProvider):
                 used_domains.add(node.domain if node.domain else "")
 
         unused_opsets = [
-            domain
-            for domain in model.opset_imports
-            if domain not in used_domains
+            domain for domain in model.opset_imports if domain not in used_domains
         ]
         if unused_opsets:
             names = ", ".join(f"'{d}'" for d in unused_opsets)
@@ -119,15 +115,14 @@ class SimplificationProvider(onnx_doctor.DiagnosticsProvider):
             if removable:
                 unused_count += 1
         if unused_count > 0:
-            fix = None
-            if model is not None:
-                fix = lambda: _apply_remove_unused_nodes(model)
             yield _emit(
                 _rule("SIM003"),
                 "graph",
                 graph,
                 message=f"Graph has {unused_count} unused node(s) whose outputs are not consumed.",
-                fix=fix,
+                fix=(lambda: _apply_remove_unused_nodes(model))
+                if model is not None
+                else None,
             )
 
 

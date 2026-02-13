@@ -27,11 +27,28 @@ def generate_rule_page(rule, output_dir: str) -> None:
         "",
         f"**Target:** {rule.target_type}",
         "",
-        "## Message",
-        "",
-        rule.message,
+        f"**Fixable:** {'🔧 Yes' if rule.fixable else 'No'}",
         "",
     ]
+
+    if not rule.default_enabled:
+        lines.extend(
+            [
+                "**Enabled by default:** No (use `--select "
+                + rule.code
+                + "` to enable)",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "## Message",
+            "",
+            rule.message,
+            "",
+        ]
+    )
 
     if rule.suggestion:
         lines.extend(
@@ -69,10 +86,13 @@ def generate_index(rules, output_dir: str) -> None:
             prefix += c
         by_prefix.setdefault(prefix, []).append(rule)
 
+    fixable_count = sum(1 for r in rules if r.fixable)
+
     lines = [
         "# Rule Reference",
         "",
-        f"ONNX Doctor includes **{len(rules)} rules** across multiple providers.",
+        f"ONNX Doctor includes **{len(rules)} rules** across multiple providers"
+        f" ({fixable_count} with auto-fix 🔧).",
         "",
     ]
 
@@ -81,13 +101,13 @@ def generate_index(rules, output_dir: str) -> None:
             [
                 f"## {prefix} Rules",
                 "",
-                "| Code | Name | Severity | Target | Message |",
-                "|------|------|----------|--------|---------|",
+                "| Code | Name | Severity | Fix | Target | Message |",
+                "|------|------|----------|-----|--------|---------|",
             ]
         )
 
         lines.extend(
-            f"| [{rule.code}]({rule.code}.md) | `{rule.name}` | {rule.default_severity} | {rule.target_type} | {rule.message} |"
+            f"| [{rule.code}]({rule.code}.md) | `{rule.name}` | {rule.default_severity} | {'🔧' if rule.fixable else ''} | {rule.target_type} | {rule.message} |"
             for rule in prefix_rules
         )
 
