@@ -54,10 +54,12 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         self._ir_version: int | None = None
         self._opset_imports: dict[str, int] = {}
         self._model_dir: pathlib.Path | None = None
+        self._root_graph: ir.Graph | None = None
 
     def check_model(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
         self._ir_version = model.ir_version
         self._opset_imports = dict(model.opset_imports)
+        self._root_graph = model.graph
 
         # ONNX012: invalid-ir-version
         if model.ir_version is None or model.ir_version < 1:
@@ -111,37 +113,41 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         if not graph.name:
             yield _emit(_rule("ONNX001"), "graph", graph)
 
+        # ONNX036/ONNX037: only apply to the root graph, not subgraphs
+        is_root_graph = self._root_graph is not None and graph is self._root_graph
+
         # ONNX036: graph-io-missing-type / ONNX037: graph-io-missing-shape
-        for value in graph.inputs:
-            if value.type is None:
-                yield _emit(
-                    _rule("ONNX036"),
-                    "graph",
-                    graph,
-                    message=f"Graph input '{value.name}' is missing type information.",
-                )
-            elif value.shape is None:
-                yield _emit(
-                    _rule("ONNX037"),
-                    "graph",
-                    graph,
-                    message=f"Graph input '{value.name}' is missing shape information.",
-                )
-        for value in graph.outputs:
-            if value.type is None:
-                yield _emit(
-                    _rule("ONNX036"),
-                    "graph",
-                    graph,
-                    message=f"Graph output '{value.name}' is missing type information.",
-                )
-            elif value.shape is None:
-                yield _emit(
-                    _rule("ONNX037"),
-                    "graph",
-                    graph,
-                    message=f"Graph output '{value.name}' is missing shape information.",
-                )
+        if is_root_graph:
+            for value in graph.inputs:
+                if value.type is None:
+                    yield _emit(
+                        _rule("ONNX036"),
+                        "graph",
+                        graph,
+                        message=f"Graph input '{value.name}' is missing type information.",
+                    )
+                elif value.shape is None:
+                    yield _emit(
+                        _rule("ONNX037"),
+                        "graph",
+                        graph,
+                        message=f"Graph input '{value.name}' is missing shape information.",
+                    )
+            for value in graph.outputs:
+                if value.type is None:
+                    yield _emit(
+                        _rule("ONNX036"),
+                        "graph",
+                        graph,
+                        message=f"Graph output '{value.name}' is missing type information.",
+                    )
+                elif value.shape is None:
+                    yield _emit(
+                        _rule("ONNX037"),
+                        "graph",
+                        graph,
+                        message=f"Graph output '{value.name}' is missing shape information.",
+                    )
 
         # ONNX101: duplicate-graph-io
         seen: set[ir.Value] = set()
@@ -254,19 +260,21 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 )
 
         # ONNX009: graph-output-not-produced
-        all_produced: set[ir.Value] = set()
-        for inp in graph.inputs:
-            all_produced.add(inp)
-        for node in graph:
-            for out in node.outputs:
-                all_produced.add(out)
         for out in graph.outputs:
-            if out not in all_produced:
+            producer = out.producer()
+            if producer is None and not out.is_graph_input():
                 yield _emit(
                     _rule("ONNX009"),
                     "graph",
                     graph,
                     message=f"Graph output '{out.name}' is not produced by any node in the graph.",
+                )
+            elif producer is not None and producer.graph is not graph:
+                yield _emit(
+                    _rule("ONNX009"),
+                    "graph",
+                    graph,
+                    message=f"Graph output '{out.name}' is produced in a different graph.",
                 )
 
         # ONNX011: initializer-name-conflict

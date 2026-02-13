@@ -19,7 +19,7 @@ def _set_location(
         yield msg
 
 
-def diagnose(  # noqa: PLR0911
+def diagnose(
     ir_object: _message.PossibleTargets,
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
 ) -> Sequence[_message.DiagnosticsMessage]:

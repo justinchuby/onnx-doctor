@@ -132,9 +132,7 @@ class OnnxRuntimeCompatibilityLinter(onnx_doctor.DiagnosticsProvider):
         return
         yield
 
-    def check_node(  # noqa: PLR0912
-        self, node: ir.Node
-    ) -> onnx_doctor.DiagnosticsMessageIterator:
+    def check_node(self, node: ir.Node) -> onnx_doctor.DiagnosticsMessageIterator:
         function_op_id = (node.domain, node.op_type, node.overload)
         if function_op_id in self.imported_functions:
             # The op is a function op and the function is defined
