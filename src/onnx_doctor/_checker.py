@@ -121,7 +121,6 @@ def diagnose_node(
     for diagnostics_provider in diagnostics_providers:
         yield from _set_location(diagnostics_provider.check_node(node), _location)
     for value in node.outputs:
-        val_name = value.name or "?"
         yield from diagnose_value(
             value,
             diagnostics_providers,

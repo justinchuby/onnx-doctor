@@ -13,10 +13,10 @@ from onnx_doctor.diagnostics_providers.onnx_spec import OnnxSpecProvider
 
 def _make_model(graph_name: str = "test", opset: int = 21) -> ir.Model:
     """Create a simple valid model for testing."""
-    X = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1, 3])
-    Y = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1, 3])
+    x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1, 3])
+    y_info = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1, 3])
     node = onnx.helper.make_node("Relu", ["X"], ["Y"])
-    graph = onnx.helper.make_graph([node], graph_name, [X], [Y])
+    graph = onnx.helper.make_graph([node], graph_name, [x_info], [y_info])
     model_proto = onnx.helper.make_model(
         graph, opset_imports=[onnx.helper.make_opsetid("", opset)]
     )
@@ -62,10 +62,10 @@ class OnnxSpecProviderModelTest(unittest.TestCase):
 class OnnxSpecProviderNodeTest(unittest.TestCase):
     def test_unregistered_op(self):
         # Create model with a fake op
-        X = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
-        Y = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
+        x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
+        y_info = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
         node = onnx.helper.make_node("FakeOpThatDoesNotExist", ["X"], ["Y"])
-        graph = onnx.helper.make_graph([node], "test", [X], [Y])
+        graph = onnx.helper.make_graph([node], "test", [x_info], [y_info])
         model_proto = onnx.helper.make_model(
             graph, opset_imports=[onnx.helper.make_opsetid("", 21)]
         )
@@ -108,10 +108,10 @@ class LocationTrackingTest(unittest.TestCase):
 
     def test_node_message_has_node_location(self):
         # Create model with a fake op to trigger ONNX019
-        X = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
-        Y = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
+        x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
+        y_info = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
         node = onnx.helper.make_node("FakeOp", ["X"], ["Y"], name="fake_node")
-        graph = onnx.helper.make_graph([node], "test", [X], [Y])
+        graph = onnx.helper.make_graph([node], "test", [x_info], [y_info])
         model_proto = onnx.helper.make_model(
             graph, opset_imports=[onnx.helper.make_opsetid("", 21)]
         )
@@ -146,9 +146,9 @@ class OnnxSpecProviderFunctionTest(unittest.TestCase):
             opset_imports=[onnx.helper.make_opsetid("", 21)],
         )
         # Wrap in a model
-        X = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
-        Y = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
-        graph = onnx.helper.make_graph([], "test", [X], [Y])
+        x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
+        y_info = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
+        graph = onnx.helper.make_graph([], "test", [x_info], [y_info])
         model_proto = onnx.helper.make_model(
             graph,
             opset_imports=[onnx.helper.make_opsetid("", 21)],

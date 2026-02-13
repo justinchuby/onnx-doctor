@@ -10,7 +10,7 @@ import sys
 # -- Project information -----------------------------------------------------
 
 project = "ONNX Doctor"
-copyright = "2024, Justin Chu"
+copyright = "2024, Justin Chu"  # noqa: A001
 author = "Justin Chu"
 
 # -- General configuration ---------------------------------------------------

@@ -225,7 +225,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                             graph,
                             message=f"Node '{node.op_type}' uses experimental operator '{domain}::{node.op_type}'.",
                         )
-            except Exception:
+            except Exception:  # noqa: PERF203
                 pass
 
         # ONNX007: duplicate-value-name + ONNX010: graph-ssa-violation
@@ -418,10 +418,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             yield _emit(_rule("ONNX029"), "function", function)
 
         # ONNX030: function-duplicate-inputs
-        input_names: list[str] = []
-        for inp in function.inputs:
-            if inp.name:
-                input_names.append(inp.name)
+        input_names = [inp.name for inp in function.inputs if inp.name]
         if len(input_names) != len(set(input_names)):
             seen: set[str] = set()
             for name in input_names:
@@ -435,10 +432,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 seen.add(name)
 
         # ONNX031: function-duplicate-outputs
-        output_names: list[str] = []
-        for out in function.outputs:
-            if out.name:
-                output_names.append(out.name)
+        output_names = [out.name for out in function.outputs if out.name]
         if len(output_names) != len(set(output_names)):
             seen_out: set[str] = set()
             for name in output_names:

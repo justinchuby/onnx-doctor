@@ -86,10 +86,10 @@ def generate_index(rules, output_dir: str) -> None:
             ]
         )
 
-        for rule in prefix_rules:
-            lines.append(
-                f"| [{rule.code}]({rule.code}.md) | `{rule.name}` | {rule.default_severity} | {rule.target_type} | {rule.message} |"
-            )
+        lines.extend(
+            f"| [{rule.code}]({rule.code}.md) | `{rule.name}` | {rule.default_severity} | {rule.target_type} | {rule.message} |"
+            for rule in prefix_rules
+        )
 
         lines.append("")
 
@@ -102,8 +102,7 @@ def generate_index(rules, output_dir: str) -> None:
             "",
         ]
     )
-    for rule in rules:
-        lines.append(rule.code)
+    lines.extend(rule.code for rule in rules)
     lines.extend(["```", ""])
 
     path = os.path.join(output_dir, "index.md")

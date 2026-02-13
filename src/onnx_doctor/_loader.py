@@ -36,8 +36,7 @@ def load_rules_from_yaml(path: pathlib.Path) -> list[Rule]:
     for target_type_str, rule_list in rules_data.items():
         if not isinstance(rule_list, list):
             continue
-        for rule_data in rule_list:
-            rules.append(_parse_rule(rule_data, target_type_str))
+        rules.extend(_parse_rule(rule_data, target_type_str) for rule_data in rule_list)
     return rules
 
 

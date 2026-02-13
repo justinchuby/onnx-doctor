@@ -127,9 +127,11 @@ class GithubFormatter:
         """Print GitHub Actions annotations to stdout."""
         for msg in messages:
             level = "error" if msg.severity == "error" else "warning"
-            location = msg.location or msg.target_type
             suggestion = msg.suggestion or (msg.rule.suggestion if msg.rule else "")
             text = f"{msg.error_code}: {msg.message}"
             if suggestion:
                 text += f" Suggestion: {suggestion}"
-            print(f"::{level} file={self._file_path},title={msg.error_code}::{text}")
+            loc = msg.location or msg.target_type
+            print(
+                f"::{level} file={self._file_path}:{loc},title={msg.error_code}::{text}"
+            )

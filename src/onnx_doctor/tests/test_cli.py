@@ -13,6 +13,7 @@ class CLITest(unittest.TestCase):
             [sys.executable, "-m", "onnx_doctor", *args],
             capture_output=True,
             text=True,
+            check=False,
         )
 
     def test_help(self):
