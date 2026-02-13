@@ -65,7 +65,7 @@ def generate_rule_page(rule, output_dir: str) -> None:
             [
                 "## Details",
                 "",
-                rule.explanation,
+                rule.explanation.strip(),
                 "",
             ]
         )

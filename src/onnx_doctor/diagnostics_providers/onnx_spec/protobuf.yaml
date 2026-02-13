@@ -7,7 +7,6 @@ rules:
       message: Tensor initializer names within a graph are not unique.
       suggestion: Rename the tensor initializers or remove the duplicates.
       explanation: |
-        ## Details
         Tensor initializer names within a graph must be unique.
 
         To fix this issue, rename the tensor initializers or remove the duplicates.
@@ -19,7 +18,6 @@ rules:
       message: Sparse tensor initializer names are not unique.
       suggestion: Rename the sparse tensor initializers to ensure uniqueness.
       explanation: |
-        ## Details
         Sparse tensor initializer names within a GraphProto must be unique
         across both initializers and sparse initializers.
 
@@ -31,7 +29,6 @@ rules:
       message: Attribute contains more than one value field.
       suggestion: Set only one value field on the attribute.
       explanation: |
-        ## Details
         In protobuf, an attribute should contain exactly one value field.
         This is enforced by the IR type system and cannot occur with onnx_ir.
 
@@ -42,7 +39,6 @@ rules:
       message: Attribute referring to a parent attribute has its own value field set.
       suggestion: Remove the value field from the reference attribute.
       explanation: |
-        ## Details
         An attribute that references a parent attribute (ref_attr_name is set)
         should not have its own value field. In onnx_ir, Attr.is_ref()
         distinguishes reference attributes.
@@ -55,7 +51,6 @@ rules:
       message: Tensor data field does not match the specified data type.
       suggestion: Ensure the data is stored in the correct field for the tensor's dtype.
       explanation: |
-        ## Details
         The data field of a TensorProto must match the specified data_type.
 
     - code: PB006
@@ -65,7 +60,6 @@ rules:
       message: A zero-element tensor should not contain data.
       suggestion: Remove the data from the zero-element tensor.
       explanation: |
-        ## Details
         A tensor with zero elements should not contain any data fields.
 
     - code: PB007
@@ -75,7 +69,6 @@ rules:
       message: Tensor with non-zero elements has multiple value fields set.
       suggestion: Use exactly one value field to store the tensor data.
       explanation: |
-        ## Details
         A tensor with non-zero elements should contain exactly one value field.
 
     - code: PB008
@@ -85,7 +78,6 @@ rules:
       message: STRING data stored in raw_data field.
       suggestion: Store string data in the string_data field instead.
       explanation: |
-        ## Details
         STRING data should not be stored in the raw_data field of a TensorProto.
 
     - code: PB009
@@ -95,7 +87,6 @@ rules:
       message: Externally stored tensor has inline data fields set.
       suggestion: Remove the inline data fields from the externally stored tensor.
       explanation: |
-        ## Details
         Tensors stored externally should not have any inline data fields set.
 
     - code: PB010
@@ -105,7 +96,6 @@ rules:
       message: Sparse tensor indices size does not match NNZ count.
       suggestion: Ensure the indices match the number of non-zero elements.
       explanation: |
-        ## Details
         The size of the indices field in a SparseTensorProto must match
         the number of non-zero elements (NNZ).
 
@@ -116,7 +106,6 @@ rules:
       message: Sparse tensor indices are out of range.
       suggestion: Ensure all indices are within the tensor's dimensions.
       explanation: |
-        ## Details
         All indices in a SparseTensorProto must be within the valid range
         defined by the tensor's shape.
 
@@ -127,7 +116,6 @@ rules:
       message: Sparse tensor indices are not sorted.
       suggestion: Sort the sparse tensor indices.
       explanation: |
-        ## Details
         Indices in a SparseTensorProto must be in sorted order.
 
     - code: PB013
@@ -137,6 +125,5 @@ rules:
       message: Sparse tensor indices are not in lexicographic order.
       suggestion: Sort the sparse tensor indices in lexicographic order.
       explanation: |
-        ## Details
         Multi-dimensional indices in a SparseTensorProto must be in
         lexicographic sorted order.
