@@ -7,6 +7,8 @@ from typing import Literal, Union
 
 import onnx_ir as ir
 
+from onnxdoctor._rule import Rule
+
 PossibleTargetTypes = Literal[
     "model",
     "node",
@@ -42,3 +44,6 @@ class DiagnosticsMessage:
     severity: PossibleSeverities
     producer: str
     error_code: str
+    rule: Rule | None = None
+    suggestion: str | None = None
+    location: str | None = None

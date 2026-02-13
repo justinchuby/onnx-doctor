@@ -1,0 +1,408 @@
+rules:
+  graph:
+    - code: ONNX001
+      name: empty-graph-name
+      category: spec
+      severity: error
+      message: Graph name is empty.
+      suggestion: Set the name of the graph, e.g. `graph.name = 'main_graph'`.
+      explanation: |
+        ## Details
+        The 'name' field of a graph must not be empty per the ONNX spec.
+
+        ## Example
+        ```python
+        graph.name = 'main_graph'
+        ```
+
+    - code: ONNX002
+      name: duplicate-graph-io
+      category: ir
+      severity: error
+      message: Duplicate Value objects in graph inputs or outputs.
+      suggestion: Remove the duplicate Value references from graph inputs/outputs.
+      explanation: |
+        ## Details
+        Each Value object in a graph's inputs and outputs must appear only once.
+        In onnx_ir, this checks object identity (not just name equality).
+
+        ## Example
+        ```python
+        # Remove duplicate outputs by identity
+        seen = set()
+        unique_outputs = []
+        for output in graph.outputs:
+            if id(output) not in seen:
+                seen.add(id(output))
+                unique_outputs.append(output)
+        graph.outputs[:] = unique_outputs
+        ```
+
+    - code: ONNX003
+      name: empty-initializer-name
+      category: spec
+      severity: error
+      message: Initializer name is empty.
+      suggestion: Set a name for the initializer tensor.
+      explanation: |
+        ## Details
+        All initializers within a graph must have non-empty names.
+
+    - code: ONNX004
+      name: unsorted-graph-nodes
+      category: spec
+      severity: error
+      message: Graph nodes are not in topological order.
+      suggestion: Sort the nodes in topological order with `graph.sort()`.
+      explanation: |
+        ## Details
+        Nodes within a graph must be in topologically sorted order, meaning
+        every node's inputs must be produced by a preceding node or be a graph input.
+
+        ## Example
+        ```python
+        graph.sort()
+        ```
+
+    - code: ONNX005
+      name: unknown-node-input
+      category: spec
+      severity: error
+      message: "Node input is not produced by a previous node or a graph input."
+      suggestion: Ensure every node input is a graph input, initializer, or output of a preceding node.
+      explanation: |
+        ## Details
+        Every input to a node must either be a graph input, an initializer,
+        or the output of a node that appears earlier in the graph.
+
+    - code: ONNX006
+      name: experimental-op
+      category: spec
+      severity: warning
+      message: Node uses an experimental operator.
+      suggestion: Replace with a stable operator if available.
+      explanation: |
+        ## Details
+        Experimental operators may change or be removed in future ONNX versions.
+        Avoid using them in production models.
+
+    - code: ONNX007
+      name: duplicate-value-name
+      category: spec
+      severity: error
+      message: Multiple values share the same name within a graph.
+      suggestion: Rename values to ensure uniqueness within the graph.
+      explanation: |
+        ## Details
+        All value names within a graph must be unique to maintain SSA form
+        and ensure unambiguous value references.
+
+    - code: ONNX008
+      name: empty-value-name
+      category: ir
+      severity: warning
+      message: Value has no name set.
+      suggestion: Assign a name to the value.
+      explanation: |
+        ## Details
+        In onnx_ir, Value objects can exist without names, but names are
+        required for serialization and debugging. Values without names may
+        cause issues during export.
+
+    - code: ONNX009
+      name: graph-output-not-produced
+      category: spec
+      severity: error
+      message: Graph output is not produced by any node in the graph.
+      suggestion: Ensure the graph output is an output of a node within the graph, or a graph input.
+      explanation: |
+        ## Details
+        Every graph output must be produced by a node within the same graph,
+        or be a graph input that passes through.
+
+    - code: ONNX010
+      name: graph-ssa-violation
+      category: spec
+      severity: error
+      message: Value name is assigned multiple times, violating SSA form.
+      suggestion: Rename values so each name is assigned exactly once.
+      explanation: |
+        ## Details
+        Graphs must be in Single Static Assignment (SSA) form, meaning each
+        value name is assigned exactly once. Multiple assignments to the same
+        name violate this invariant.
+
+    - code: ONNX011
+      name: initializer-name-conflict
+      category: spec
+      severity: error
+      message: Initializer name conflicts with a subgraph input name.
+      suggestion: Rename the initializer or the subgraph input to avoid the conflict.
+      explanation: |
+        ## Details
+        An initializer cannot share its name with a subgraph input, as this
+        creates ambiguity in value resolution.
+
+  model:
+    - code: ONNX012
+      name: invalid-ir-version
+      category: spec
+      severity: error
+      message: Model ir_version is missing or invalid.
+      suggestion: Set a valid ir_version on the model.
+      explanation: |
+        ## Details
+        Every ONNX model must have a valid ir_version set. This field indicates
+        the version of the ONNX IR specification the model conforms to.
+
+    - code: ONNX013
+      name: ir-version-too-new
+      category: spec
+      severity: warning
+      message: Model ir_version is newer than the checker supports.
+      suggestion: Upgrade onnx-doctor or downgrade the model's ir_version.
+      explanation: |
+        ## Details
+        The model's ir_version is higher than what this version of the checker
+        recognizes. Some validations may not be accurate.
+
+    - code: ONNX014
+      name: duplicate-metadata-keys
+      category: spec
+      severity: error
+      message: Model has duplicate keys in metadata_props.
+      suggestion: Remove duplicate metadata keys, keeping one entry per key.
+      explanation: |
+        ## Details
+        The metadata_props field of a model must not contain duplicate keys.
+
+    - code: ONNX015
+      name: missing-default-opset
+      category: spec
+      severity: error
+      message: "Model (IR version >= 3) is missing opset import for the default ONNX domain."
+      suggestion: 'Add an opset import for the default domain, e.g. `model.opset_imports[""] = 21`.'
+      explanation: |
+        ## Details
+        Models with IR version 3 or higher must include an opset_import for
+        the default ONNX domain ("").
+
+    - code: ONNX016
+      name: unexpected-opset-import
+      category: spec
+      severity: error
+      message: "Model (IR version < 3) should not have opset_import specified."
+      suggestion: Remove opset_import from the model, or upgrade the ir_version.
+      explanation: |
+        ## Details
+        Models with IR version less than 3 do not support opset_import.
+
+  node:
+    - code: ONNX017
+      name: missing-opset-for-domain
+      category: spec
+      severity: error
+      message: No opset imported for the node's operator domain.
+      suggestion: Add an opset_import for the node's domain to the model.
+      explanation: |
+        ## Details
+        Every node's operator domain must have a corresponding opset_import
+        in the model. Without it, the runtime cannot determine which version
+        of the operator to use.
+
+    - code: ONNX018
+      name: deprecated-op
+      category: spec
+      severity: warning
+      message: Node uses a deprecated operator.
+      suggestion: Replace with the recommended alternative operator.
+      explanation: |
+        ## Details
+        The operator used by this node has been deprecated in the ONNX spec.
+        Deprecated operators may be removed in future versions.
+
+    - code: ONNX019
+      name: unregistered-op
+      category: spec
+      severity: error
+      message: No operator schema found for this op type and opset version.
+      suggestion: Check the op_type, domain, and opset version are correct.
+      explanation: |
+        ## Details
+        No operator schema is registered for the given op_type and opset version
+        combination. This may indicate a typo in the op_type, an incorrect domain,
+        or a missing opset import.
+
+  value:
+    - code: ONNX020
+      name: missing-value-type
+      category: spec
+      severity: warning
+      message: Value has no type annotation.
+      suggestion: Set the type of the value, e.g. `value.type = ir.TensorType(ir.DataType.FLOAT)`.
+      explanation: |
+        ## Details
+        Values should have type annotations for shape inference and runtime
+        compatibility checks. Missing types may cause issues with downstream tools.
+
+    - code: ONNX021
+      name: undefined-value-dtype
+      category: spec
+      severity: error
+      message: "Value's tensor type has UNDEFINED dtype."
+      suggestion: Set a concrete dtype on the tensor type.
+      explanation: |
+        ## Details
+        A value with a tensor type must have a defined dtype (not UNDEFINED).
+
+  tensor:
+    - code: ONNX022
+      name: undefined-tensor-dtype
+      category: spec
+      severity: error
+      message: Tensor dtype is UNDEFINED.
+      suggestion: Set the tensor's dtype to a valid data type.
+      explanation: |
+        ## Details
+        Every tensor must have a defined dtype. An UNDEFINED dtype indicates
+        the tensor's data type was not properly set.
+
+    - code: ONNX023
+      name: external-tensor-absolute-path
+      category: spec
+      severity: error
+      message: External tensor location is an absolute path (must be relative).
+      suggestion: Use a relative path for the external tensor location.
+      explanation: |
+        ## Details
+        External tensor locations must be relative paths to ensure model
+        portability across different file systems.
+
+    - code: ONNX024
+      name: external-tensor-empty-location
+      category: spec
+      severity: error
+      message: External tensor location is empty.
+      suggestion: Set a valid relative file path for the external tensor location.
+      explanation: |
+        ## Details
+        External tensors must have a non-empty location that points to the
+        file containing the tensor data.
+
+    - code: ONNX025
+      name: external-tensor-outside-model-dir
+      category: spec
+      severity: error
+      message: External tensor path points outside the model directory.
+      suggestion: Move the tensor data file inside the model directory.
+      explanation: |
+        ## Details
+        External tensor paths must not escape the model's directory (e.g.
+        using "../"). This ensures the model is self-contained and portable.
+
+    - code: ONNX026
+      name: external-tensor-inaccessible
+      category: spec
+      severity: error
+      message: External tensor file does not exist or is not accessible.
+      suggestion: Ensure the tensor data file exists at the specified path.
+      explanation: |
+        ## Details
+        The file referenced by an external tensor's location must exist and
+        be readable.
+
+    - code: ONNX027
+      name: external-tensor-not-file
+      category: spec
+      severity: error
+      message: External tensor path is not a regular file.
+      suggestion: Ensure the external tensor path points to a regular file, not a directory or symlink.
+      explanation: |
+        ## Details
+        External tensor data must be stored in a regular file. Directories,
+        symlinks, or other special file types are not valid.
+
+  function:
+    - code: ONNX028
+      name: function-empty-name
+      category: spec
+      severity: error
+      message: Function name is empty.
+      suggestion: Set a name for the function.
+      explanation: |
+        ## Details
+        Every function must have a non-empty name field.
+
+    - code: ONNX029
+      name: function-missing-domain
+      category: spec
+      severity: error
+      message: "Function has no domain (required for IR version >= 8)."
+      suggestion: Set the domain field on the function.
+      explanation: |
+        ## Details
+        For models with IR version 8 or higher, all functions must specify
+        their domain.
+
+    - code: ONNX030
+      name: function-duplicate-inputs
+      category: spec
+      severity: error
+      message: Function has duplicate input names.
+      suggestion: Rename function inputs to ensure uniqueness.
+      explanation: |
+        ## Details
+        Function input names must be unique. Duplicate input names create
+        ambiguity in value resolution.
+
+    - code: ONNX031
+      name: function-duplicate-outputs
+      category: spec
+      severity: error
+      message: Function has duplicate output names.
+      suggestion: Rename function outputs to ensure uniqueness.
+      explanation: |
+        ## Details
+        Function output names must be unique.
+
+    - code: ONNX032
+      name: function-duplicate-attributes
+      category: spec
+      severity: error
+      message: Function has duplicate attribute names.
+      suggestion: Remove duplicate attributes from the function.
+      explanation: |
+        ## Details
+        Function attribute names must be unique.
+
+    - code: ONNX033
+      name: unsorted-function-nodes
+      category: spec
+      severity: error
+      message: Function nodes are not in topological order.
+      suggestion: Sort the function's nodes in topological order.
+      explanation: |
+        ## Details
+        Nodes within a function must be in topologically sorted order.
+
+    - code: ONNX034
+      name: function-ssa-violation
+      category: spec
+      severity: error
+      message: "Function is not in SSA form \u2014 a value name is assigned multiple times."
+      suggestion: Rename values so each name is assigned exactly once within the function.
+      explanation: |
+        ## Details
+        Functions must be in Single Static Assignment (SSA) form, meaning
+        each value name is assigned exactly once.
+
+    - code: ONNX035
+      name: function-opset-mismatch
+      category: spec
+      severity: error
+      message: "Function opset import is incompatible with the model's opset import."
+      suggestion: Align the function's opset imports with those of the model.
+      explanation: |
+        ## Details
+        The opset versions imported by a function must be compatible with the
+        opset versions imported by the model that contains it.
