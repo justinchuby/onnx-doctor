@@ -310,6 +310,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         opset_version = self._opset_imports[domain]
 
         # ONNX018: deprecated-op + ONNX019: unregistered-op
+        # Only check schema for official ONNX domains
+        official_domains = {"", "ai.onnx", "ai.onnx.ml"}
         try:
             schema = onnx.defs.get_schema(node.op_type, opset_version, domain)
             if schema.deprecated:
@@ -320,12 +322,13 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     message=f"Operator '{domain}::{node.op_type}' (opset {opset_version}) is deprecated.",
                 )
         except onnx.defs.SchemaError:
-            yield _emit(
-                _rule("ONNX019"),
-                "node",
-                node,
-                message=f"No schema found for '{domain}::{node.op_type}' at opset version {opset_version}.",
-            )
+            if domain in official_domains:
+                yield _emit(
+                    _rule("ONNX019"),
+                    "node",
+                    node,
+                    message=f"No schema found for '{domain}::{node.op_type}' at opset version {opset_version}.",
+                )
 
     def check_value(self, value: ir.Value) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX102: empty-value-name
