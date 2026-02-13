@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import typing
-from typing import Iterable, Iterator, Union
+from collections.abc import Iterable, Iterator
+from typing import Union
 
 import onnx_ir as ir
 

@@ -160,7 +160,7 @@ rules:
       category: spec
       severity: warning
       message: Model ir_version is newer than the checker supports.
-      suggestion: Upgrade onnx-doctor or downgrade the model's ir_version.
+      suggestion: Upgrade onnx-doctor to a version that supports this ir_version.
       explanation: |
         ## Details
         The model's ir_version is higher than what this version of the checker

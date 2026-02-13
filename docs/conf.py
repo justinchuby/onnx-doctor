@@ -3,6 +3,8 @@
 To build the documentation: python -m sphinx docs docs/_build/html
 """
 
+from __future__ import annotations
+
 import sys
 
 # -- Project information -----------------------------------------------------

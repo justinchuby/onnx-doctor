@@ -13,8 +13,12 @@ class RuleRegistryTest(unittest.TestCase):
     def test_register_and_lookup_by_code(self):
         registry = RuleRegistry()
         rule = Rule(
-            code="TEST001", name="test-rule", message="Test.",
-            default_severity="error", category="spec", target_type="graph",
+            code="TEST001",
+            name="test-rule",
+            message="Test.",
+            default_severity="error",
+            category="spec",
+            target_type="graph",
         )
         registry.register(rule)
         self.assertEqual(registry.get_by_code("TEST001"), rule)
@@ -22,8 +26,12 @@ class RuleRegistryTest(unittest.TestCase):
     def test_register_and_lookup_by_name(self):
         registry = RuleRegistry()
         rule = Rule(
-            code="TEST001", name="test-rule", message="Test.",
-            default_severity="error", category="spec", target_type="graph",
+            code="TEST001",
+            name="test-rule",
+            message="Test.",
+            default_severity="error",
+            category="spec",
+            target_type="graph",
         )
         registry.register(rule)
         self.assertEqual(registry.get_by_name("test-rule"), rule)
@@ -31,8 +39,12 @@ class RuleRegistryTest(unittest.TestCase):
     def test_get_by_code_or_name(self):
         registry = RuleRegistry()
         rule = Rule(
-            code="TEST001", name="test-rule", message="Test.",
-            default_severity="error", category="spec", target_type="graph",
+            code="TEST001",
+            name="test-rule",
+            message="Test.",
+            default_severity="error",
+            category="spec",
+            target_type="graph",
         )
         registry.register(rule)
         self.assertEqual(registry.get("TEST001"), rule)
@@ -42,8 +54,12 @@ class RuleRegistryTest(unittest.TestCase):
     def test_duplicate_code_raises(self):
         registry = RuleRegistry()
         rule = Rule(
-            code="TEST001", name="test-rule", message="Test.",
-            default_severity="error", category="spec", target_type="graph",
+            code="TEST001",
+            name="test-rule",
+            message="Test.",
+            default_severity="error",
+            category="spec",
+            target_type="graph",
         )
         registry.register(rule)
         with self.assertRaises(ValueError):
@@ -51,16 +67,44 @@ class RuleRegistryTest(unittest.TestCase):
 
     def test_rules_returns_sorted(self):
         registry = RuleRegistry()
-        r2 = Rule(code="B002", name="b", message="B.", default_severity="error", category="spec", target_type="graph")
-        r1 = Rule(code="A001", name="a", message="A.", default_severity="error", category="spec", target_type="graph")
+        r2 = Rule(
+            code="B002",
+            name="b",
+            message="B.",
+            default_severity="error",
+            category="spec",
+            target_type="graph",
+        )
+        r1 = Rule(
+            code="A001",
+            name="a",
+            message="A.",
+            default_severity="error",
+            category="spec",
+            target_type="graph",
+        )
         registry.register(r2)
         registry.register(r1)
         self.assertEqual(registry.rules(), [r1, r2])
 
     def test_rules_by_prefix(self):
         registry = RuleRegistry()
-        r1 = Rule(code="ONNX001", name="a", message="A.", default_severity="error", category="spec", target_type="graph")
-        r2 = Rule(code="ORT001", name="b", message="B.", default_severity="error", category="spec", target_type="node")
+        r1 = Rule(
+            code="ONNX001",
+            name="a",
+            message="A.",
+            default_severity="error",
+            category="spec",
+            target_type="graph",
+        )
+        r2 = Rule(
+            code="ORT001",
+            name="b",
+            message="B.",
+            default_severity="error",
+            category="spec",
+            target_type="node",
+        )
         registry.register(r1)
         registry.register(r2)
         self.assertEqual(registry.rules_by_prefix("ONNX"), [r1])
@@ -68,7 +112,14 @@ class RuleRegistryTest(unittest.TestCase):
 
     def test_contains(self):
         registry = RuleRegistry()
-        rule = Rule(code="TEST001", name="test-rule", message="Test.", default_severity="error", category="spec", target_type="graph")
+        rule = Rule(
+            code="TEST001",
+            name="test-rule",
+            message="Test.",
+            default_severity="error",
+            category="spec",
+            target_type="graph",
+        )
         registry.register(rule)
         self.assertIn("TEST001", registry)
         self.assertIn("test-rule", registry)
@@ -77,7 +128,14 @@ class RuleRegistryTest(unittest.TestCase):
     def test_len(self):
         registry = RuleRegistry()
         self.assertEqual(len(registry), 0)
-        rule = Rule(code="TEST001", name="test-rule", message="Test.", default_severity="error", category="spec", target_type="graph")
+        rule = Rule(
+            code="TEST001",
+            name="test-rule",
+            message="Test.",
+            default_severity="error",
+            category="spec",
+            target_type="graph",
+        )
         registry.register(rule)
         self.assertEqual(len(registry), 1)
 
@@ -99,12 +157,15 @@ class DefaultRegistryTest(unittest.TestCase):
     def test_all_rules_have_required_fields(self):
         registry = get_default_registry()
         for rule in registry.rules():
-            self.assertTrue(rule.code, f"Rule missing code")
+            self.assertTrue(rule.code, "Rule missing code")
             self.assertTrue(rule.name, f"Rule {rule.code} missing name")
             self.assertTrue(rule.message, f"Rule {rule.code} missing message")
             self.assertIn(rule.default_severity, ("error", "warning", "info"))
             self.assertIn(rule.category, ("spec", "ir", "protobuf"))
-            self.assertIn(rule.target_type, ("model", "graph", "node", "value", "tensor", "function", "attribute"))
+            self.assertIn(
+                rule.target_type,
+                ("model", "graph", "node", "value", "tensor", "function", "attribute"),
+            )
 
     def test_no_duplicate_codes(self):
         rules = load_rules_from_yaml(_SPEC_YAML)

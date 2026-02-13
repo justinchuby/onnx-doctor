@@ -25,12 +25,24 @@ onnx-doctor check model.onnx
 Example output:
 
 ```
-model.onnx:model ONNX013 Model ir_version 13 is newer than the checker supports (max 10).
-  suggestion: Upgrade onnx-doctor or downgrade the model's ir_version.
-model.onnx:graph ONNX001 Graph name is empty.
+model.onnx:graph: ONNX001 Graph name is empty.
   suggestion: Set the name of the graph, e.g. `graph.name = 'main_graph'`.
 
-Found 1 error, 1 warning.
+model.onnx:graph:node/5(MyCustomOp): ONNX019 No schema found for '::MyCustomOp' at opset version 21.
+  suggestion: Verify the operator name, domain, and imported opset version.
+
+model.onnx:graph:node/5(MyCustomOp): ONNX020 Value 'custom_out' has no type annotation.
+  suggestion: Run shape inference on the model, e.g. `onnx.shape_inference.infer_shapes(model)`.
+
+Found 2 errors, 1 warning.
+```
+
+The location path shows where the issue is in the graph hierarchy. For nodes,
+it includes the node index and name (e.g. `node/5(MyCustomOp)`). For values,
+it shows the producer node. For subgraphs, the full path is shown:
+
+```
+model.onnx:graph:node/3(If_0):then_branch:node/1(Add): ONNX019 ...
 ```
 
 ### Programmatic API
@@ -94,6 +106,7 @@ JSON output example:
     "severity": "error",
     "message": "Graph name is empty.",
     "target_type": "graph",
+    "location": "graph",
     "rule_name": "empty-graph-name",
     "suggestion": "Set the name of the graph, e.g. `graph.name = 'main_graph'`."
   }

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
 from rich.console import Console
 from rich.text import Text
@@ -21,8 +21,12 @@ class TextFormatter:
 
     def format(self, messages: Sequence[DiagnosticsMessage]) -> None:
         """Print all messages to stderr."""
-        for msg in messages:
+        for i, msg in enumerate(messages):
             self._format_one(msg)
+            # Add blank line after messages with suggestions (except the last)
+            suggestion = msg.suggestion or (msg.rule.suggestion if msg.rule else None)
+            if suggestion and i < len(messages) - 1:
+                self._console.print()
         self._print_summary(messages)
 
     def _format_one(self, msg: DiagnosticsMessage) -> None:
@@ -57,10 +61,8 @@ class TextFormatter:
             self._console.print(hint)
 
     def _build_location(self, msg: DiagnosticsMessage) -> str:
-        if msg.location:
-            return f"{self._file_path}:{msg.location}"
-        # Build a basic location from target type
-        return f"{self._file_path}:{msg.target_type}"
+        loc = msg.location or msg.target_type
+        return f"{self._file_path}:{loc}:"
 
     def _print_summary(self, messages: Sequence[DiagnosticsMessage]) -> None:
         errors = sum(1 for m in messages if m.severity == "error")
@@ -82,9 +84,7 @@ class TextFormatter:
             summary.append(".", style="bold")
             self._console.print(summary)
         else:
-            self._console.print(
-                Text("\nAll checks passed.", style="bold green")
-            )
+            self._console.print(Text("\nAll checks passed.", style="bold green"))
 
 
 class JsonFormatter:

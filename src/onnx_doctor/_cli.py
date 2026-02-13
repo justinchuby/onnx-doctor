@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
 import onnx_ir as ir
 
@@ -25,9 +25,7 @@ def _build_parser() -> argparse.ArgumentParser:
     check_parser = subparsers.add_parser(
         "check", help="Check an ONNX model for issues."
     )
-    check_parser.add_argument(
-        "model", type=str, help="Path to the .onnx model file."
-    )
+    check_parser.add_argument("model", type=str, help="Path to the .onnx model file.")
     check_parser.add_argument(
         "--select",
         type=str,
@@ -64,9 +62,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # list-rules command
-    subparsers.add_parser(
-        "list-rules", help="List all available rules."
-    )
+    subparsers.add_parser("list-rules", help="List all available rules.")
 
     return parser
 
@@ -86,20 +82,16 @@ def _filter_messages(
 
     if select is not None:
         filtered = [
-            m for m in filtered
-            if any(
-                m.error_code == s or m.error_code.startswith(s)
-                for s in select
-            )
+            m
+            for m in filtered
+            if any(m.error_code == s or m.error_code.startswith(s) for s in select)
         ]
 
     if ignore is not None:
         filtered = [
-            m for m in filtered
-            if not any(
-                m.error_code == i or m.error_code.startswith(i)
-                for i in ignore
-            )
+            m
+            for m in filtered
+            if not any(m.error_code == i or m.error_code.startswith(i) for i in ignore)
         ]
 
     if min_severity is not None:
@@ -159,7 +151,9 @@ def _cmd_explain(args: argparse.Namespace) -> int:
 
     if rule is None:
         print(f"Unknown rule: '{args.code}'", file=sys.stderr)
-        print("Use 'onnx-doctor list-rules' to see all available rules.", file=sys.stderr)
+        print(
+            "Use 'onnx-doctor list-rules' to see all available rules.", file=sys.stderr
+        )
         return 1
 
     from rich.console import Console

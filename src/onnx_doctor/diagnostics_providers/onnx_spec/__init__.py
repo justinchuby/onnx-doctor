@@ -13,7 +13,7 @@ from onnx_doctor._loader import get_default_registry
 from onnx_doctor._rule import Rule
 
 # Maximum supported IR version by this checker.
-_MAX_IR_VERSION = 10
+_MAX_IR_VERSION = 14
 
 
 def _rule(code: str) -> Rule:
@@ -64,14 +64,18 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         # ONNX012: invalid-ir-version
         if model.ir_version is None or model.ir_version < 1:
             yield _emit(
-                _rule("ONNX012"), "model", model,
+                _rule("ONNX012"),
+                "model",
+                model,
                 message=f"Model ir_version is {model.ir_version!r}, which is invalid.",
             )
 
         # ONNX013: ir-version-too-new
         if model.ir_version is not None and model.ir_version > _MAX_IR_VERSION:
             yield _emit(
-                _rule("ONNX013"), "model", model,
+                _rule("ONNX013"),
+                "model",
+                model,
                 message=f"Model ir_version {model.ir_version} is newer than the checker supports (max {_MAX_IR_VERSION}).",
             )
 
@@ -81,7 +85,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             for key in model.metadata_props:
                 if key in seen_keys:
                     yield _emit(
-                        _rule("ONNX014"), "model", model,
+                        _rule("ONNX014"),
+                        "model",
+                        model,
                         message=f"Duplicate metadata key: '{key}'.",
                     )
                 seen_keys.add(key)
@@ -115,7 +121,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             vid = id(value)
             if vid in seen_ids:
                 yield _emit(
-                    _rule("ONNX002"), "graph", graph,
+                    _rule("ONNX002"),
+                    "graph",
+                    graph,
                     message=f"Duplicate Value object in graph inputs: '{value.name}'.",
                 )
             seen_ids.add(vid)
@@ -124,7 +132,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             vid = id(value)
             if vid in seen_ids:
                 yield _emit(
-                    _rule("ONNX002"), "graph", graph,
+                    _rule("ONNX002"),
+                    "graph",
+                    graph,
                     message=f"Duplicate Value object in graph outputs: '{value.name}'.",
                 )
             seen_ids.add(vid)
@@ -150,7 +160,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     is_sorted = False
                     # ONNX005: unknown-node-input
                     yield _emit(
-                        _rule("ONNX005"), "graph", graph,
+                        _rule("ONNX005"),
+                        "graph",
+                        graph,
                         message=f"Node '{node.op_type}' has input '{inp.name}' not produced by a previous node or graph input.",
                     )
             for out in node.outputs:
@@ -166,12 +178,17 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 opset_version = self._opset_imports.get(domain)
                 if opset_version is not None:
                     schema = onnx.defs.get_schema(node.op_type, opset_version, domain)
-                    if schema.support_level == onnx.defs.OpSchema.SupportType.EXPERIMENTAL:
+                    if (
+                        schema.support_level
+                        == onnx.defs.OpSchema.SupportType.EXPERIMENTAL
+                    ):
                         yield _emit(
-                            _rule("ONNX006"), "graph", graph,
+                            _rule("ONNX006"),
+                            "graph",
+                            graph,
                             message=f"Node '{node.op_type}' uses experimental operator '{domain}::{node.op_type}'.",
                         )
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
 
         # ONNX007: duplicate-value-name + ONNX010: graph-ssa-violation
@@ -187,11 +204,15 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         for name, count in seen_names.items():
             if count > 1:
                 yield _emit(
-                    _rule("ONNX007"), "graph", graph,
+                    _rule("ONNX007"),
+                    "graph",
+                    graph,
                     message=f"Value name '{name}' appears {count} times in the graph.",
                 )
                 yield _emit(
-                    _rule("ONNX010"), "graph", graph,
+                    _rule("ONNX010"),
+                    "graph",
+                    graph,
                     message=f"Value name '{name}' is assigned {count} times, violating SSA form.",
                 )
 
@@ -205,7 +226,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         for out in graph.outputs:
             if id(out) not in all_produced:
                 yield _emit(
-                    _rule("ONNX009"), "graph", graph,
+                    _rule("ONNX009"),
+                    "graph",
+                    graph,
                     message=f"Graph output '{out.name}' is not produced by any node in the graph.",
                 )
 
@@ -215,12 +238,14 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         init_names = set(graph.initializers.keys())
         for node in graph:
             for attr in node.attributes.values():
-                if hasattr(attr, 'type') and attr.type == ir.AttributeType.GRAPH:
+                if hasattr(attr, "type") and attr.type == ir.AttributeType.GRAPH:
                     subgraph = attr.value
                     for sub_input in subgraph.inputs:
                         if sub_input.name and sub_input.name in init_names:
                             yield _emit(
-                                _rule("ONNX011"), "graph", graph,
+                                _rule("ONNX011"),
+                                "graph",
+                                graph,
                                 message=f"Initializer '{sub_input.name}' conflicts with subgraph input name.",
                             )
 
@@ -232,7 +257,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         # ONNX017: missing-opset-for-domain
         if domain not in self._opset_imports:
             yield _emit(
-                _rule("ONNX017"), "node", node,
+                _rule("ONNX017"),
+                "node",
+                node,
                 message=f"No opset imported for domain '{domain}' used by node '{node.op_type}'.",
             )
             return
@@ -244,12 +271,16 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             schema = onnx.defs.get_schema(node.op_type, opset_version, domain)
             if schema.deprecated:
                 yield _emit(
-                    _rule("ONNX018"), "node", node,
+                    _rule("ONNX018"),
+                    "node",
+                    node,
                     message=f"Operator '{domain}::{node.op_type}' (opset {opset_version}) is deprecated.",
                 )
         except onnx.defs.SchemaError:
             yield _emit(
-                _rule("ONNX019"), "node", node,
+                _rule("ONNX019"),
+                "node",
+                node,
                 message=f"No schema found for '{domain}::{node.op_type}' at opset version {opset_version}.",
             )
 
@@ -263,14 +294,18 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         # ONNX020: missing-value-type
         if value.type is None:
             yield _emit(
-                _rule("ONNX020"), "node", value,
+                _rule("ONNX020"),
+                "node",
+                value,
                 message=f"Value '{value.name}' has no type annotation.",
             )
         elif isinstance(value.type, ir.TensorType):
             # ONNX021: undefined-value-dtype
             if value.type.dtype == ir.DataType.UNDEFINED:
                 yield _emit(
-                    _rule("ONNX021"), "node", value,
+                    _rule("ONNX021"),
+                    "node",
+                    value,
                     message=f"Value '{value.name}' has tensor type with UNDEFINED dtype.",
                 )
 
@@ -280,7 +315,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         # ONNX022: undefined-tensor-dtype
         if tensor.dtype == ir.DataType.UNDEFINED:
             yield _emit(
-                _rule("ONNX022"), "tensor", tensor,
+                _rule("ONNX022"),
+                "tensor",
+                tensor,
                 message=f"Tensor '{tensor.name}' has UNDEFINED dtype.",
             )
 
@@ -291,7 +328,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             # ONNX024: external-tensor-empty-location
             if not location:
                 yield _emit(
-                    _rule("ONNX024"), "tensor", tensor,
+                    _rule("ONNX024"),
+                    "tensor",
+                    tensor,
                     message=f"External tensor '{tensor.name}' has empty location.",
                 )
                 return
@@ -299,14 +338,18 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             # ONNX023: external-tensor-absolute-path
             if os.path.isabs(location):
                 yield _emit(
-                    _rule("ONNX023"), "tensor", tensor,
+                    _rule("ONNX023"),
+                    "tensor",
+                    tensor,
                     message=f"External tensor '{tensor.name}' has absolute path: '{location}'.",
                 )
 
             # ONNX025: external-tensor-outside-model-dir
             if ".." in pathlib.PurePosixPath(location).parts:
                 yield _emit(
-                    _rule("ONNX025"), "tensor", tensor,
+                    _rule("ONNX025"),
+                    "tensor",
+                    tensor,
                     message=f"External tensor '{tensor.name}' path '{location}' escapes model directory.",
                 )
 
@@ -315,12 +358,16 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 full_path = pathlib.Path(tensor.base_dir) / location
                 if not full_path.exists():
                     yield _emit(
-                        _rule("ONNX026"), "tensor", tensor,
+                        _rule("ONNX026"),
+                        "tensor",
+                        tensor,
                         message=f"External tensor '{tensor.name}' file not found: '{full_path}'.",
                     )
                 elif not full_path.is_file():
                     yield _emit(
-                        _rule("ONNX027"), "tensor", tensor,
+                        _rule("ONNX027"),
+                        "tensor",
+                        tensor,
                         message=f"External tensor '{tensor.name}' path is not a regular file: '{full_path}'.",
                     )
 
@@ -349,7 +396,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             for name in input_names:
                 if name in seen:
                     yield _emit(
-                        _rule("ONNX030"), "function", function,
+                        _rule("ONNX030"),
+                        "function",
+                        function,
                         message=f"Function '{function.name}' has duplicate input name: '{name}'.",
                     )
                 seen.add(name)
@@ -364,19 +413,25 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             for name in output_names:
                 if name in seen_out:
                     yield _emit(
-                        _rule("ONNX031"), "function", function,
+                        _rule("ONNX031"),
+                        "function",
+                        function,
                         message=f"Function '{function.name}' has duplicate output name: '{name}'.",
                     )
                 seen_out.add(name)
 
         # ONNX032: function-duplicate-attributes
-        attr_names: list[str] = [a.name for a in function.attributes if hasattr(a, 'name')]
+        attr_names: list[str] = [
+            a.name for a in function.attributes if hasattr(a, "name")
+        ]
         if len(attr_names) != len(set(attr_names)):
             seen_attr: set[str] = set()
             for name in attr_names:
                 if name in seen_attr:
                     yield _emit(
-                        _rule("ONNX032"), "function", function,
+                        _rule("ONNX032"),
+                        "function",
+                        function,
                         message=f"Function '{function.name}' has duplicate attribute: '{name}'.",
                     )
                 seen_attr.add(name)
@@ -407,16 +462,23 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         for name, count in assigned_names.items():
             if count > 1:
                 yield _emit(
-                    _rule("ONNX034"), "function", function,
+                    _rule("ONNX034"),
+                    "function",
+                    function,
                     message=f"Value name '{name}' is assigned {count} times in function '{function.name}'.",
                 )
 
         # ONNX035: function-opset-mismatch
         if self._opset_imports:
             for domain, version in function.opset_imports.items():
-                if domain in self._opset_imports and self._opset_imports[domain] != version:
+                if (
+                    domain in self._opset_imports
+                    and self._opset_imports[domain] != version
+                ):
                     yield _emit(
-                        _rule("ONNX035"), "function", function,
+                        _rule("ONNX035"),
+                        "function",
+                        function,
                         message=(
                             f"Function '{function.name}' imports opset {domain}:{version}, "
                             f"but model imports {domain}:{self._opset_imports[domain]}."

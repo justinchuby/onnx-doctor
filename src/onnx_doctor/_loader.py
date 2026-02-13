@@ -10,8 +10,15 @@ import yaml
 from onnx_doctor._rule import Rule, RuleCategory, RuleSeverity, TargetType
 from onnx_doctor._rule_registry import RuleRegistry
 
-_SPEC_YAML = pathlib.Path(__file__).parent / "diagnostics_providers" / "onnx_spec" / "spec.yaml"
-_PROTOBUF_YAML = pathlib.Path(__file__).parent / "diagnostics_providers" / "onnx_spec" / "protobuf.yaml"
+_SPEC_YAML = (
+    pathlib.Path(__file__).parent / "diagnostics_providers" / "onnx_spec" / "spec.yaml"
+)
+_PROTOBUF_YAML = (
+    pathlib.Path(__file__).parent
+    / "diagnostics_providers"
+    / "onnx_spec"
+    / "protobuf.yaml"
+)
 
 
 def load_rules_from_yaml(path: pathlib.Path) -> list[Rule]:

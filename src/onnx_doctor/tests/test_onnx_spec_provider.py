@@ -32,15 +32,12 @@ def _codes(messages: list[onnx_doctor.DiagnosticsMessage]) -> set[str]:
 
 
 class OnnxSpecProviderModelTest(unittest.TestCase):
-    def test_valid_model_only_has_ir_version_warning(self):
+    def test_valid_model_has_no_issues(self):
         model = _make_model()
         messages = _diagnose(model)
         codes = _codes(messages)
-        # Only ONNX013 (ir-version-too-new) for modern onnx
-        self.assertTrue(
-            codes <= {"ONNX013"},
-            f"Unexpected codes: {codes}"
-        )
+        # No issues for modern onnx models
+        self.assertEqual(codes, set(), f"Unexpected codes: {codes}")
 
     def test_empty_graph_name(self):
         model = _make_model(graph_name="")
@@ -82,12 +79,48 @@ class OnnxSpecProviderValueTest(unittest.TestCase):
         # Create a graph with a value that has no type
         graph = ir.Graph([], [], nodes=[], name="test")
         v = ir.Value(name="untyped")
-        graph._inputs = [v]  # noqa: SLF001
-        graph._outputs = [v]  # noqa: SLF001
+        graph._inputs = [v]
+        graph._outputs = [v]
         model = ir.Model(graph, ir_version=10)
         model.opset_imports[""] = 21
         messages = _diagnose(model)
         self.assertIn("ONNX020", _codes(messages))
+
+
+class LocationTrackingTest(unittest.TestCase):
+    def test_graph_message_has_graph_location(self):
+        model = _make_model(graph_name="")
+        messages = _diagnose(model)
+        onnx001 = [m for m in messages if m.error_code == "ONNX001"]
+        self.assertTrue(len(onnx001) > 0)
+        self.assertEqual(onnx001[0].location, "graph")
+
+    def test_node_message_has_node_location(self):
+        # Create model with a fake op to trigger ONNX019
+        X = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
+        Y = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
+        node = onnx.helper.make_node("FakeOp", ["X"], ["Y"], name="fake_node")
+        graph = onnx.helper.make_graph([node], "test", [X], [Y])
+        model_proto = onnx.helper.make_model(
+            graph, opset_imports=[onnx.helper.make_opsetid("", 21)]
+        )
+        model = ir.serde.deserialize_model(model_proto)
+        messages = _diagnose(model)
+        onnx019 = [m for m in messages if m.error_code == "ONNX019"]
+        self.assertTrue(len(onnx019) > 0)
+        self.assertIn("node/0(fake_node)", onnx019[0].location)
+
+    def test_value_message_has_producer_location(self):
+        graph = ir.Graph([], [], nodes=[], name="test")
+        v = ir.Value(name="untyped")
+        graph._inputs = [v]
+        graph._outputs = [v]
+        model = ir.Model(graph, ir_version=10)
+        model.opset_imports[""] = 21
+        messages = _diagnose(model)
+        onnx020 = [m for m in messages if m.error_code == "ONNX020"]
+        self.assertTrue(len(onnx020) > 0)
+        self.assertIn("input(untyped)", onnx020[0].location)
 
 
 class OnnxSpecProviderFunctionTest(unittest.TestCase):

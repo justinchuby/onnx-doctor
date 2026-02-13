@@ -8,7 +8,7 @@ import sys
 # Add the src directory to sys.path so we can import onnx_doctor
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from onnx_doctor._loader import get_default_registry  # noqa: E402
+from onnx_doctor._loader import get_default_registry
 
 
 def generate_rule_page(rule, output_dir: str) -> None:
@@ -34,20 +34,24 @@ def generate_rule_page(rule, output_dir: str) -> None:
     ]
 
     if rule.suggestion:
-        lines.extend([
-            "## Suggestion",
-            "",
-            rule.suggestion,
-            "",
-        ])
+        lines.extend(
+            [
+                "## Suggestion",
+                "",
+                rule.suggestion,
+                "",
+            ]
+        )
 
     if rule.explanation:
-        lines.extend([
-            "## Details",
-            "",
-            rule.explanation,
-            "",
-        ])
+        lines.extend(
+            [
+                "## Details",
+                "",
+                rule.explanation,
+                "",
+            ]
+        )
 
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
@@ -73,12 +77,14 @@ def generate_index(rules, output_dir: str) -> None:
     ]
 
     for prefix, prefix_rules in sorted(by_prefix.items()):
-        lines.extend([
-            f"## {prefix} Rules",
-            "",
-            "| Code | Name | Severity | Target | Message |",
-            "|------|------|----------|--------|---------|",
-        ])
+        lines.extend(
+            [
+                f"## {prefix} Rules",
+                "",
+                "| Code | Name | Severity | Target | Message |",
+                "|------|------|----------|--------|---------|",
+            ]
+        )
 
         for rule in prefix_rules:
             lines.append(
@@ -88,12 +94,14 @@ def generate_index(rules, output_dir: str) -> None:
         lines.append("")
 
     # Add toctree (MyST syntax)
-    lines.extend([
-        "```{toctree}",
-        ":hidden:",
-        ":maxdepth: 1",
-        "",
-    ])
+    lines.extend(
+        [
+            "```{toctree}",
+            ":hidden:",
+            ":maxdepth: 1",
+            "",
+        ]
+    )
     for rule in rules:
         lines.append(rule.code)
     lines.extend(["```", ""])

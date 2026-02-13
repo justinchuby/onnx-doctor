@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 __all__ = [
-    "diagnose",
-    "DiagnosticsProvider",
-    "DiagnosticsMessageIterator",
     "DiagnosticsMessage",
+    "DiagnosticsMessageIterator",
+    "DiagnosticsProvider",
     "Rule",
     "RuleRegistry",
+    "diagnose",
 ]
 
 from ._checker import diagnose
