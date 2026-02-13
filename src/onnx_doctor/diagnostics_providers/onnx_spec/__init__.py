@@ -56,7 +56,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         self._model_dir: pathlib.Path | None = None
 
     def check_model(
-        self, model: ir.ModelProtocol
+        self, model: ir.Model
     ) -> onnx_doctor.DiagnosticsMessageIterator:
         self._ir_version = model.ir_version
         self._opset_imports = dict(model.opset_imports)
@@ -109,7 +109,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             yield _emit(_rule("ONNX016"), "model", model)
 
     def check_graph(
-        self, graph: ir.GraphProtocol
+        self, graph: ir.Graph
     ) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX001: empty-graph-name
         if not graph.name:
@@ -140,57 +140,62 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 )
 
         # ONNX101: duplicate-graph-io
-        seen_ids: set[int] = set()
+        seen: set[ir.Value] = set()
         for value in graph.inputs:
-            vid = id(value)
-            if vid in seen_ids:
+            if value in seen:
                 yield _emit(
                     _rule("ONNX101"),
                     "graph",
                     graph,
                     message=f"Duplicate Value object in graph inputs: '{value.name}'.",
                 )
-            seen_ids.add(vid)
-        seen_ids.clear()
+            seen.add(value)
+        seen.clear()
         for value in graph.outputs:
-            vid = id(value)
-            if vid in seen_ids:
+            if value in seen:
                 yield _emit(
                     _rule("ONNX101"),
                     "graph",
                     graph,
                     message=f"Duplicate Value object in graph outputs: '{value.name}'.",
                 )
-            seen_ids.add(vid)
+            seen.add(value)
 
         # ONNX003: empty-initializer-name
         for tensor in graph.initializers.values():
             if not tensor.name:
                 yield _emit(_rule("ONNX003"), "graph", graph)
 
-        # Collect known values for topological order / unknown-input checks
-        known_values: set[int] = set()
+        # Collect known values for topological order check
+        known_values: set[ir.Value] = set()
         for inp in graph.inputs:
-            known_values.add(id(inp))
+            known_values.add(inp)
         for init in graph.initializers.values():
-            # Initializers are also accessible by name
-            known_values.add(id(init))
+            known_values.add(init)
 
         # ONNX004: unsorted-graph-nodes + ONNX005: unknown-node-input
         is_sorted = True
         for node in graph:
             for inp in node.inputs:
-                if inp is not None and id(inp) not in known_values:
-                    is_sorted = False
-                    # ONNX005: unknown-node-input
-                    yield _emit(
-                        _rule("ONNX005"),
-                        "graph",
-                        graph,
-                        message=f"Node '{node.op_type}' has input '{inp.name}' not produced by a previous node or graph input.",
-                    )
+                if inp is None:
+                    continue
+                if inp not in known_values:
+                    # Value not yet produced in this graph — check if it's
+                    # from an outer scope (valid in subgraphs) or truly unknown
+                    if inp.producer() is not None or inp.is_graph_input() or inp.is_initializer():
+                        # Produced elsewhere (outer graph) — only a topo-sort issue
+                        is_sorted = False
+                    else:
+                        is_sorted = False
+                        # ONNX005: unknown-node-input
+                        yield _emit(
+                            _rule("ONNX005"),
+                            "graph",
+                            graph,
+                            message=f"Node '{node.op_type}' has input '{inp.name}' not produced by any node or graph input.",
+                        )
             for out in node.outputs:
-                known_values.add(id(out))
+                known_values.add(out)
 
         if not is_sorted:
             yield _emit(_rule("ONNX004"), "graph", graph)
@@ -241,14 +246,14 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 )
 
         # ONNX009: graph-output-not-produced
-        all_produced: set[int] = set()
+        all_produced: set[ir.Value] = set()
         for inp in graph.inputs:
-            all_produced.add(id(inp))
+            all_produced.add(inp)
         for node in graph:
             for out in node.outputs:
-                all_produced.add(id(out))
+                all_produced.add(out)
         for out in graph.outputs:
-            if id(out) not in all_produced:
+            if out not in all_produced:
                 yield _emit(
                     _rule("ONNX009"),
                     "graph",
@@ -274,7 +279,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                             )
 
     def check_node(
-        self, node: ir.NodeProtocol
+        self, node: ir.Node
     ) -> onnx_doctor.DiagnosticsMessageIterator:
         domain = node.domain if node.domain else ""
 
@@ -309,7 +314,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             )
 
     def check_value(
-        self, value: ir.ValueProtocol
+        self, value: ir.Value
     ) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX102: empty-value-name
         if not value.name:
@@ -334,7 +339,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 )
 
     def check_tensor(
-        self, tensor: ir.TensorProtocol
+        self, tensor: ir.Tensor
     ) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX022: undefined-tensor-dtype
         if tensor.dtype == ir.DataType.UNDEFINED:
@@ -396,7 +401,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     )
 
     def check_function(
-        self, function: ir.FunctionProtocol
+        self, function: ir.Function
     ) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX028: function-empty-name
         if not function.name:
@@ -461,9 +466,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 seen_attr.add(name)
 
         # ONNX033: unsorted-function-nodes + ONNX034: function-ssa-violation
-        known: set[int] = set()
+        known: set[ir.Value] = set()
         for inp in function.inputs:
-            known.add(id(inp))
+            known.add(inp)
 
         assigned_names: dict[str, int] = {}
         for inp in function.inputs:
@@ -473,10 +478,10 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         unsorted = False
         for node in function:
             for inp in node.inputs:
-                if inp is not None and id(inp) not in known:
+                if inp is not None and inp not in known:
                     unsorted = True
             for out in node.outputs:
-                known.add(id(out))
+                known.add(out)
                 if out.name:
                     assigned_names[out.name] = assigned_names.get(out.name, 0) + 1
 

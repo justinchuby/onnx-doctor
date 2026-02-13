@@ -23,27 +23,27 @@ def diagnose(  # noqa: PLR0911
     ir_object: _message.PossibleTargets,
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
 ) -> Sequence[_message.DiagnosticsMessage]:
-    if isinstance(ir_object, ir.ModelProtocol):
+    if isinstance(ir_object, ir.Model):
         return list(diagnose_model(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.GraphProtocol):
+    if isinstance(ir_object, ir.Graph):
         return list(diagnose_graph(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.FunctionProtocol):
+    if isinstance(ir_object, ir.Function):
         return list(diagnose_function(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.NodeProtocol):
+    if isinstance(ir_object, ir.Node):
         return list(diagnose_node(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.TensorProtocol):
+    if isinstance(ir_object, ir.Tensor):
         return list(diagnose_tensor(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.ValueProtocol):
+    if isinstance(ir_object, ir.Value):
         return list(diagnose_value(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.AttributeProtocol):
+    if isinstance(ir_object, ir.Attr):
         return list(diagnose_attribute(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.ReferenceAttributeProtocol):
+    if isinstance(ir_object, ir.ReferenceAttribute):
         return list(diagnose_attribute(ir_object, diagnostics_providers))
     raise TypeError(f"Unknown IR object: {ir_object}")
 
 
 def diagnose_model(
-    model: ir.ModelProtocol,
+    model: ir.Model,
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
 ) -> _diagnostics.DiagnosticsMessageIterator:
     for diagnostics_provider in diagnostics_providers:
@@ -59,7 +59,7 @@ def diagnose_model(
 
 
 def diagnose_graph(
-    graph: ir.GraphProtocol,
+    graph: ir.Graph,
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
     _location: str = "graph",
 ) -> _diagnostics.DiagnosticsMessageIterator:
@@ -89,7 +89,7 @@ def diagnose_graph(
 
 
 def diagnose_function(
-    function: ir.FunctionProtocol,
+    function: ir.Function,
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
     _location: str = "function",
 ) -> _diagnostics.DiagnosticsMessageIterator:
@@ -116,7 +116,7 @@ def diagnose_function(
 
 
 def diagnose_node(
-    node: ir.NodeProtocol,
+    node: ir.Node,
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
     _location: str = "node",
 ) -> _diagnostics.DiagnosticsMessageIterator:
@@ -138,7 +138,7 @@ def diagnose_node(
 
 
 def diagnose_tensor(
-    tensor: ir.TensorProtocol,
+    tensor: ir.Tensor,
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
     _location: str = "tensor",
 ) -> _diagnostics.DiagnosticsMessageIterator:
@@ -147,7 +147,7 @@ def diagnose_tensor(
 
 
 def diagnose_value(
-    value: ir.ValueProtocol,
+    value: ir.Value,
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
     _location: str = "value",
 ) -> _diagnostics.DiagnosticsMessageIterator:
@@ -156,7 +156,7 @@ def diagnose_value(
 
 
 def diagnose_attribute(
-    attribute: ir.AttributeProtocol | ir.ReferenceAttributeProtocol,
+    attribute: ir.Attr,
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
     _location: str = "attribute",
 ) -> _diagnostics.DiagnosticsMessageIterator:
@@ -166,14 +166,14 @@ def diagnose_attribute(
             _location,
         )
     if attribute.type == ir.AttributeType.TENSOR:
-        attribute = typing.cast(ir.AttributeProtocol, attribute)
+        attribute = typing.cast(ir.Attr, attribute)
         yield from diagnose_tensor(
             attribute.value,
             diagnostics_providers,
             _location=_location,
         )
     elif attribute.type == ir.AttributeType.TENSORS:
-        attribute = typing.cast(ir.AttributeProtocol, attribute)
+        attribute = typing.cast(ir.Attr, attribute)
         for tensor in attribute.value:
             yield from diagnose_tensor(
                 tensor,
@@ -181,7 +181,7 @@ def diagnose_attribute(
                 _location=_location,
             )
     elif attribute.type == ir.AttributeType.GRAPH:
-        attribute = typing.cast(ir.AttributeProtocol, attribute)
+        attribute = typing.cast(ir.Attr, attribute)
         subgraph_loc = f"{_location}:{attribute.name}"
         yield from diagnose_graph(
             attribute.value,
@@ -189,7 +189,7 @@ def diagnose_attribute(
             _location=subgraph_loc,
         )
     elif attribute.type == ir.AttributeType.GRAPHS:
-        attribute = typing.cast(ir.AttributeProtocol, attribute)
+        attribute = typing.cast(ir.Attr, attribute)
         for i, graph in enumerate(attribute.value):
             subgraph_loc = f"{_location}:{attribute.name}[{i}]"
             yield from diagnose_graph(

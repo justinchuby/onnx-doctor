@@ -111,11 +111,11 @@ class Snapshot:
 
 
 def capture(
-    obj: ir.ModelProtocol
-    | ir.GraphProtocol
+    obj: ir.Model
+    | ir.Graph
     | ir.GraphView
-    | ir.NodeProtocol
-    | ir.FunctionProtocol,
+    | ir.Node
+    | ir.Function,
     assign_id: bool = False,
 ) -> Snapshot:
     """Capture a snapshot of the current state of the IR.
@@ -127,13 +127,13 @@ def capture(
             preserved in the protobuf objects.
     """
     snapshot = Snapshot(id(obj), type(obj).__name__)
-    if isinstance(obj, ir.ModelProtocol):
+    if isinstance(obj, ir.Model):
         _capture_model(snapshot, obj, assign_id=assign_id)
-    elif isinstance(obj, (ir.GraphProtocol, ir.GraphView)):
+    elif isinstance(obj, (ir.Graph, ir.GraphView)):
         _capture_graph(snapshot, obj, assign_id=assign_id)
-    elif isinstance(obj, ir.NodeProtocol):
+    elif isinstance(obj, ir.Node):
         _capture_node(snapshot, obj, assign_id=assign_id)
-    elif isinstance(obj, ir.FunctionProtocol):
+    elif isinstance(obj, ir.Function):
         _capture_function(snapshot, obj, assign_id=assign_id)
     return snapshot
 
@@ -192,7 +192,7 @@ def _assign_id_to_proto(
     )
 
 
-def _assign_id_to_model_proto(model_proto: onnx.ModelProto, model: ir.ModelProtocol):
+def _assign_id_to_model_proto(model_proto: onnx.ModelProto, model: ir.Model):
     _assign_id_to_proto(model_proto, _get_or_create_id(model))
     _assign_id_to_graph_proto(model_proto.graph, model.graph)
     for function_proto in model_proto.functions:
@@ -201,7 +201,7 @@ def _assign_id_to_model_proto(model_proto: onnx.ModelProto, model: ir.ModelProto
 
 
 def _assign_id_to_graph_proto(
-    graph_proto: onnx.GraphProto, graph: ir.GraphProtocol | ir.GraphView
+    graph_proto: onnx.GraphProto, graph: ir.Graph | ir.GraphView
 ):
     _assign_id_to_proto(graph_proto, _get_or_create_id(graph))
     for value_proto, intput in zip(graph_proto.input, graph.inputs):
@@ -220,7 +220,7 @@ def _assign_id_to_graph_proto(
 
 def _assign_id_to_node_proto(
     node_proto: onnx.NodeProto,
-    node: ir.NodeProtocol,
+    node: ir.Node,
     value_info_protos: dict[str, onnx.ValueInfoProto],
 ):
     _assign_id_to_proto(node_proto, _get_or_create_id(node))
@@ -237,13 +237,13 @@ def _assign_id_to_node_proto(
         _assign_id_to_value_info_proto(value_info_protos[output_name], output)
     for attr_proto in node_proto.attribute:
         attr = node.attributes[attr_proto.name]
-        if isinstance(attr, ir.ReferenceAttributeProtocol):
+        if isinstance(attr, ir.ReferenceAttribute):
             continue
         _assign_id_to_attribute_proto(attr_proto, attr)
 
 
 def _assign_id_to_attribute_proto(
-    attr_proto: onnx.AttributeProto, attr: ir.AttributeProtocol
+    attr_proto: onnx.AttributeProto, attr: ir.Attr
 ):
     if attr.type == ir.AttributeType.GRAPH:
         _assign_id_to_graph_proto(attr_proto.g, attr.value)
@@ -259,13 +259,13 @@ def _assign_id_to_attribute_proto(
 
 
 def _assign_id_to_tensor_proto(
-    tensor_proto: onnx.TensorProto, tensor: ir.TensorProtocol
+    tensor_proto: onnx.TensorProto, tensor: ir.Tensor
 ):
     _assign_id_to_proto(tensor_proto, _get_or_create_id(tensor))
 
 
 def _assign_id_to_function_proto(
-    function_proto: onnx.FunctionProto, func: ir.FunctionProtocol
+    function_proto: onnx.FunctionProto, func: ir.Function
 ):
     _assign_id_to_proto(function_proto, _get_or_create_id(func))
     value_info_protos = {
@@ -280,7 +280,7 @@ def _assign_id_to_function_proto(
 
 
 def _assign_id_to_value_info_proto(
-    value_info_proto: onnx.ValueInfoProto, value: ir.ValueProtocol
+    value_info_proto: onnx.ValueInfoProto, value: ir.Value
 ):
     _assign_id_to_proto(value_info_proto, _get_or_create_id(value))
 
@@ -304,7 +304,7 @@ def _get_or_create_id(obj: Any, assign_id: bool = False) -> int:
 
 
 def _capture_model(
-    snapshot: Snapshot, model: ir.ModelProtocol, *, assign_id: bool = False
+    snapshot: Snapshot, model: ir.Model, *, assign_id: bool = False
 ):
     snapshot.model = ModelSnapshot(
         ir_version=model.ir_version,
@@ -327,7 +327,7 @@ def _capture_model(
 
 def _capture_graph(
     snapshot: Snapshot,
-    graph: ir.GraphProtocol | ir.GraphView,
+    graph: ir.Graph | ir.GraphView,
     *,
     assign_id: bool = False,
 ):
@@ -352,7 +352,7 @@ def _capture_graph(
 
 
 def _capture_function(
-    snapshot: Snapshot, func: ir.FunctionProtocol, *, assign_id: bool = False
+    snapshot: Snapshot, func: ir.Function, *, assign_id: bool = False
 ):
     function_id = _get_or_create_id(func, assign_id)
     snapshot.functions[function_id] = FunctionSnapshot(
@@ -369,7 +369,7 @@ def _capture_function(
 
 
 def _capture_node(
-    snapshot: Snapshot, node: ir.NodeProtocol, *, assign_id: bool = False
+    snapshot: Snapshot, node: ir.Node, *, assign_id: bool = False
 ):
     node_id = _get_or_create_id(node, assign_id)
     snapshot.nodes[node_id] = NodeSnapshot(
@@ -393,14 +393,14 @@ def _capture_node(
     for output in node.outputs:
         _capture_value(snapshot, output, assign_id=assign_id)
     for attr in node.attributes.values():
-        if isinstance(attr, ir.ReferenceAttributeProtocol):
+        if isinstance(attr, ir.ReferenceAttribute):
             _capture_reference_attribute(snapshot, attr, assign_id=assign_id)
         else:
             _capture_attribute(snapshot, attr, assign_id=assign_id)
 
 
 def _capture_value(
-    snapshot: Snapshot, value: ir.ValueProtocol, *, assign_id: bool = False
+    snapshot: Snapshot, value: ir.Value, *, assign_id: bool = False
 ):
     value_id = _get_or_create_id(value, assign_id)
     snapshot.values[value_id] = ValueSnapshot(
@@ -412,7 +412,7 @@ def _capture_value(
 
 
 def _capture_attribute(
-    snapshot: Snapshot, attr: ir.AttributeProtocol, *, assign_id: bool = False
+    snapshot: Snapshot, attr: ir.Attr, *, assign_id: bool = False
 ):
     if attr.type == ir.AttributeType.GRAPH:
         value = _get_or_create_id(attr.value, assign_id)
@@ -442,7 +442,7 @@ def _capture_attribute(
 
 def _capture_reference_attribute(
     snapshot: Snapshot,
-    ref_attr: ir.ReferenceAttributeProtocol,
+    ref_attr: ir.ReferenceAttribute,
     *,
     assign_id: bool = False,
 ):
@@ -456,7 +456,7 @@ def _capture_reference_attribute(
 
 
 def _capture_tensor(
-    snapshot: Snapshot, tensor: ir.TensorProtocol, *, assign_id: bool = False
+    snapshot: Snapshot, tensor: ir.Tensor, *, assign_id: bool = False
 ):
     tensor_id = _get_or_create_id(tensor, assign_id)
     size_limit = 100

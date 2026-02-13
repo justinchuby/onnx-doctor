@@ -80,7 +80,7 @@ onnx-doctor check model.onnx                  # CLI
 
 ## Key Dependencies
 
-- **`onnx_ir`**: The linter operates on IR objects (`ir.ModelProtocol`, `ir.GraphProtocol`, etc.), **not** protobuf directly.
+- **`onnx_ir`**: The linter operates on IR objects (`ir.Model`, `ir.Graph`, etc.), **not** protobuf directly.
 - **`onnx`**: Used for op schema lookups (`onnx.defs.get_schema`).
 - **`pyyaml`**: Rule definitions loaded from YAML files.
 - **`rich`**: CLI output formatting.

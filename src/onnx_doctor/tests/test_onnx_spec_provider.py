@@ -23,7 +23,7 @@ def _make_model(graph_name: str = "test", opset: int = 21) -> ir.Model:
     return ir.serde.deserialize_model(model_proto)
 
 
-def _diagnose(model: ir.ModelProtocol) -> list[onnx_doctor.DiagnosticsMessage]:
+def _diagnose(model: ir.Model) -> list[onnx_doctor.DiagnosticsMessage]:
     return list(onnx_doctor.diagnose(model, [OnnxSpecProvider()]))
 
 

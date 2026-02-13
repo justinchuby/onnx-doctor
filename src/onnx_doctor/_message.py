@@ -19,14 +19,14 @@ PossibleTargetTypes = Literal[
 ]
 
 PossibleTargets = Union[
-    ir.ModelProtocol,
-    ir.GraphProtocol,
-    ir.NodeProtocol,
-    ir.AttributeProtocol,
-    ir.TensorProtocol,
-    ir.ValueProtocol,
-    ir.FunctionProtocol,
-    ir.ReferenceAttributeProtocol,
+    ir.Model,
+    ir.Graph,
+    ir.Node,
+    ir.Attr,
+    ir.Tensor,
+    ir.Value,
+    ir.Function,
+    ir.ReferenceAttribute,
 ]
 
 PossibleSeverities = Literal[

@@ -17,41 +17,41 @@ DiagnosticsMessageIterator: TypeAlias = Union[
 
 
 class DiagnosticsProvider:
-    def check_model(self, model: ir.ModelProtocol) -> DiagnosticsMessageIterator:
+    def check_model(self, model: ir.Model) -> DiagnosticsMessageIterator:
         del model
         return
         yield
 
-    def check_graph(self, graph: ir.GraphProtocol) -> DiagnosticsMessageIterator:
+    def check_graph(self, graph: ir.Graph) -> DiagnosticsMessageIterator:
         del graph
         return
         yield
 
     def check_function(
-        self, function: ir.FunctionProtocol
+        self, function: ir.Function
     ) -> DiagnosticsMessageIterator:
         del function
         return
         yield
 
-    def check_node(self, node: ir.NodeProtocol) -> DiagnosticsMessageIterator:
+    def check_node(self, node: ir.Node) -> DiagnosticsMessageIterator:
         del node
         return
         yield
 
-    def check_value(self, value: ir.ValueProtocol) -> DiagnosticsMessageIterator:
+    def check_value(self, value: ir.Value) -> DiagnosticsMessageIterator:
         del value
         return
         yield
 
     def check_attribute(
-        self, attr: ir.AttributeProtocol | ir.ReferenceAttributeProtocol
+        self, attr: ir.Attr
     ) -> DiagnosticsMessageIterator:
         del attr
         return
         yield
 
-    def check_tensor(self, tensor: ir.TensorProtocol) -> DiagnosticsMessageIterator:
+    def check_tensor(self, tensor: ir.Tensor) -> DiagnosticsMessageIterator:
         del tensor
         return
         yield

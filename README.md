@@ -165,7 +165,7 @@ import onnx_ir as ir
 import onnx_doctor
 
 class MyProvider(onnx_doctor.DiagnosticsProvider):
-    def check_graph(self, graph: ir.GraphProtocol):
+    def check_graph(self, graph: ir.Graph):
         node_count = sum(1 for _ in graph.all_nodes())
         if node_count > 1000:
             yield onnx_doctor.DiagnosticsMessage(

@@ -100,7 +100,7 @@ def _version_in_range(version: int, version_range: tuple[int, int]) -> bool:
     return version_range[0] <= version <= version_range[1]
 
 
-def _to_onnx_string_type_format(type_: ir.TypeProtocol) -> str:
+def _to_onnx_string_type_format(type_: ir.Type) -> str:
     if isinstance(type_, ir.TensorType):
         return f"tensor({type_.dtype.name.lower()})"
     if isinstance(type_, ir.SequenceType):
@@ -126,7 +126,7 @@ class OnnxRuntimeCompatibilityLinter(onnx_doctor.DiagnosticsProvider):
         self.imported_functions = set()
 
     def check_model(
-        self, model: ir.ModelProtocol
+        self, model: ir.Model
     ) -> onnx_doctor.DiagnosticsMessageIterator:
         self.ir_version = model.ir_version
         self.opset_imports = model.opset_imports
@@ -135,7 +135,7 @@ class OnnxRuntimeCompatibilityLinter(onnx_doctor.DiagnosticsProvider):
         yield
 
     def check_node(  # noqa: PLR0912
-        self, node: ir.NodeProtocol
+        self, node: ir.Node
     ) -> onnx_doctor.DiagnosticsMessageIterator:
         function_op_id = (node.domain, node.op_type, node.overload)
         if function_op_id in self.imported_functions:
@@ -178,7 +178,7 @@ class OnnxRuntimeCompatibilityLinter(onnx_doctor.DiagnosticsProvider):
             return
 
         # Check types
-        bounded_types: dict[str, ir.TypeProtocol] = {}
+        bounded_types: dict[str, ir.Type] = {}
         bounded_index = {}
         for i, (input_, type_str) in enumerate(
             zip(node.inputs, found_schema.input_types)
