@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import unittest
 
-from onnxdoctor._loader import _SPEC_YAML, get_default_registry, load_rules_from_yaml
-from onnxdoctor._rule import Rule
-from onnxdoctor._rule_registry import RuleRegistry
+from onnx_doctor._loader import _SPEC_YAML, get_default_registry, load_rules_from_yaml
+from onnx_doctor._rule import Rule
+from onnx_doctor._rule_registry import RuleRegistry
 
 
 class RuleRegistryTest(unittest.TestCase):

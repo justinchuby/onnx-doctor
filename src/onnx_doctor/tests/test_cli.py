@@ -10,7 +10,7 @@ import unittest
 class CLITest(unittest.TestCase):
     def _run(self, *args: str) -> subprocess.CompletedProcess:
         return subprocess.run(
-            [sys.executable, "-m", "onnxdoctor", *args],
+            [sys.executable, "-m", "onnx_doctor", *args],
             capture_output=True,
             text=True,
         )

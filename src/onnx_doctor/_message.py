@@ -7,7 +7,7 @@ from typing import Literal, Union
 
 import onnx_ir as ir
 
-from onnxdoctor._rule import Rule
+from onnx_doctor._rule import Rule
 
 PossibleTargetTypes = Literal[
     "model",

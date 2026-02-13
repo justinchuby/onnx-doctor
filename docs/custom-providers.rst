@@ -9,8 +9,8 @@ Example
 .. code-block:: python
 
    import onnx_ir as ir
-   import onnxdoctor
-   from onnxdoctor import Rule
+   import onnx_doctor
+   from onnx_doctor import Rule
 
    MY_RULE = Rule(
        code="CUSTOM001",
@@ -22,11 +22,11 @@ Example
        suggestion="Consider optimizing or splitting the model.",
    )
 
-   class MyProvider(onnxdoctor.DiagnosticsProvider):
+   class MyProvider(onnx_doctor.DiagnosticsProvider):
        def check_graph(self, graph: ir.GraphProtocol):
            node_count = sum(1 for _ in graph)
            if node_count > 1000:
-               yield onnxdoctor.DiagnosticsMessage(
+               yield onnx_doctor.DiagnosticsMessage(
                    target_type="graph",
                    target=graph,
                    message=f"Graph has {node_count} nodes.",
@@ -38,7 +38,7 @@ Example
 
    # Use it
    model = ir.load("model.onnx")
-   messages = onnxdoctor.diagnose(model, [MyProvider()])
+   messages = onnx_doctor.diagnose(model, [MyProvider()])
 
 Available Check Methods
 -----------------------

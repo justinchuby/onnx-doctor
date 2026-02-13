@@ -6,9 +6,9 @@ Core Function
 
 .. code-block:: python
 
-   import onnxdoctor
+   import onnx_doctor
 
-   messages = onnxdoctor.diagnose(model, providers)
+   messages = onnx_doctor.diagnose(model, providers)
 
 The ``diagnose`` function walks the IR tree and dispatches to each provider's
 check methods (``check_model``, ``check_graph``, ``check_node``, etc.).
@@ -32,7 +32,7 @@ Rule
 
 .. code-block:: python
 
-   from onnxdoctor import Rule
+   from onnx_doctor import Rule
 
    rule = Rule(
        code="CUSTOM001",
@@ -50,8 +50,8 @@ RuleRegistry
 
 .. code-block:: python
 
-   from onnxdoctor import RuleRegistry
-   from onnxdoctor._loader import get_default_registry
+   from onnx_doctor import RuleRegistry
+   from onnx_doctor._loader import get_default_registry
 
    # Get all built-in rules
    registry = get_default_registry()

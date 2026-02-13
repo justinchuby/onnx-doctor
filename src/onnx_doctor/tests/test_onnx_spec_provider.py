@@ -7,8 +7,8 @@ import unittest
 import onnx
 import onnx_ir as ir
 
-import onnxdoctor
-from onnxdoctor.diagnostics_providers.onnx_spec import OnnxSpecProvider
+import onnx_doctor
+from onnx_doctor.diagnostics_providers.onnx_spec import OnnxSpecProvider
 
 
 def _make_model(graph_name: str = "test", opset: int = 21) -> ir.Model:
@@ -23,11 +23,11 @@ def _make_model(graph_name: str = "test", opset: int = 21) -> ir.Model:
     return ir.serde.deserialize_model(model_proto)
 
 
-def _diagnose(model: ir.ModelProtocol) -> list[onnxdoctor.DiagnosticsMessage]:
-    return list(onnxdoctor.diagnose(model, [OnnxSpecProvider()]))
+def _diagnose(model: ir.ModelProtocol) -> list[onnx_doctor.DiagnosticsMessage]:
+    return list(onnx_doctor.diagnose(model, [OnnxSpecProvider()]))
 
 
-def _codes(messages: list[onnxdoctor.DiagnosticsMessage]) -> set[str]:
+def _codes(messages: list[onnx_doctor.DiagnosticsMessage]) -> set[str]:
     return {m.error_code for m in messages}
 
 

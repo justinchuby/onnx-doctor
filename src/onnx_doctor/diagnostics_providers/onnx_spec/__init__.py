@@ -8,9 +8,9 @@ import pathlib
 import onnx
 import onnx_ir as ir
 
-import onnxdoctor
-from onnxdoctor._loader import get_default_registry
-from onnxdoctor._rule import Rule
+import onnx_doctor
+from onnx_doctor._loader import get_default_registry
+from onnx_doctor._rule import Rule
 
 # Maximum supported IR version by this checker.
 _MAX_IR_VERSION = 10
@@ -25,14 +25,14 @@ def _rule(code: str) -> Rule:
 
 def _emit(
     rule: Rule,
-    target_type: onnxdoctor.DiagnosticsMessage.target_type,
+    target_type: onnx_doctor.DiagnosticsMessage.target_type,
     target: object,
     message: str | None = None,
     suggestion: str | None = None,
     location: str | None = None,
-) -> onnxdoctor.DiagnosticsMessage:
+) -> onnx_doctor.DiagnosticsMessage:
     """Create a DiagnosticsMessage from a rule."""
-    return onnxdoctor.DiagnosticsMessage(
+    return onnx_doctor.DiagnosticsMessage(
         target_type=target_type,
         target=target,
         message=message or rule.message,
@@ -45,7 +45,7 @@ def _emit(
     )
 
 
-class OnnxSpecProvider(onnxdoctor.DiagnosticsProvider):
+class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
     """Provider that checks models against the ONNX specification."""
 
     PRODUCER = "OnnxSpecProvider"
@@ -57,7 +57,7 @@ class OnnxSpecProvider(onnxdoctor.DiagnosticsProvider):
 
     def check_model(
         self, model: ir.ModelProtocol
-    ) -> onnxdoctor.DiagnosticsMessageIterator:
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
         self._ir_version = model.ir_version
         self._opset_imports = dict(model.opset_imports)
 
@@ -104,7 +104,7 @@ class OnnxSpecProvider(onnxdoctor.DiagnosticsProvider):
 
     def check_graph(
         self, graph: ir.GraphProtocol
-    ) -> onnxdoctor.DiagnosticsMessageIterator:
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX001: empty-graph-name
         if not graph.name:
             yield _emit(_rule("ONNX001"), "graph", graph)
@@ -226,7 +226,7 @@ class OnnxSpecProvider(onnxdoctor.DiagnosticsProvider):
 
     def check_node(
         self, node: ir.NodeProtocol
-    ) -> onnxdoctor.DiagnosticsMessageIterator:
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
         domain = node.domain if node.domain else ""
 
         # ONNX017: missing-opset-for-domain
@@ -255,7 +255,7 @@ class OnnxSpecProvider(onnxdoctor.DiagnosticsProvider):
 
     def check_value(
         self, value: ir.ValueProtocol
-    ) -> onnxdoctor.DiagnosticsMessageIterator:
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX008: empty-value-name
         if not value.name:
             yield _emit(_rule("ONNX008"), "node", value)
@@ -276,7 +276,7 @@ class OnnxSpecProvider(onnxdoctor.DiagnosticsProvider):
 
     def check_tensor(
         self, tensor: ir.TensorProtocol
-    ) -> onnxdoctor.DiagnosticsMessageIterator:
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX022: undefined-tensor-dtype
         if tensor.dtype == ir.DataType.UNDEFINED:
             yield _emit(
@@ -326,7 +326,7 @@ class OnnxSpecProvider(onnxdoctor.DiagnosticsProvider):
 
     def check_function(
         self, function: ir.FunctionProtocol
-    ) -> onnxdoctor.DiagnosticsMessageIterator:
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX028: function-empty-name
         if not function.name:
             yield _emit(_rule("ONNX028"), "function", function)

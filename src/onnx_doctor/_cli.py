@@ -8,10 +8,10 @@ from typing import Sequence
 
 import onnx_ir as ir
 
-import onnxdoctor
-from onnxdoctor._formatter import GithubFormatter, JsonFormatter, TextFormatter
-from onnxdoctor._loader import get_default_registry
-from onnxdoctor.diagnostics_providers.onnx_spec import OnnxSpecProvider
+import onnx_doctor
+from onnx_doctor._formatter import GithubFormatter, JsonFormatter, TextFormatter
+from onnx_doctor._loader import get_default_registry
+from onnx_doctor.diagnostics_providers.onnx_spec import OnnxSpecProvider
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -76,11 +76,11 @@ def _severity_rank(severity: str) -> int:
 
 
 def _filter_messages(
-    messages: Sequence[onnxdoctor.DiagnosticsMessage],
+    messages: Sequence[onnx_doctor.DiagnosticsMessage],
     select: list[str] | None,
     ignore: list[str] | None,
     min_severity: str | None,
-) -> list[onnxdoctor.DiagnosticsMessage]:
+) -> list[onnx_doctor.DiagnosticsMessage]:
     """Filter messages by select/ignore codes and minimum severity."""
     filtered = list(messages)
 
@@ -109,7 +109,7 @@ def _filter_messages(
     return filtered
 
 
-def _get_providers() -> list[onnxdoctor.DiagnosticsProvider]:
+def _get_providers() -> list[onnx_doctor.DiagnosticsProvider]:
     """Get the default set of providers."""
     return [OnnxSpecProvider()]
 
@@ -127,7 +127,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
 
     # Run diagnostics
     providers = _get_providers()
-    messages = onnxdoctor.diagnose(model, providers)
+    messages = onnx_doctor.diagnose(model, providers)
 
     # Filter
     filtered = _filter_messages(

@@ -22,11 +22,11 @@ Or use the programmatic API:
 .. code-block:: python
 
    import onnx_ir as ir
-   import onnxdoctor
-   from onnxdoctor.diagnostics_providers import OnnxSpecProvider
+   import onnx_doctor
+   from onnx_doctor.diagnostics_providers import OnnxSpecProvider
 
    model = ir.load("model.onnx")
-   messages = onnxdoctor.diagnose(model, [OnnxSpecProvider()])
+   messages = onnx_doctor.diagnose(model, [OnnxSpecProvider()])
 
    for msg in messages:
        print(f"[{msg.severity}] {msg.error_code}: {msg.message}")

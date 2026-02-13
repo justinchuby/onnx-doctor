@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from onnxdoctor._rule import Rule
+from onnx_doctor._rule import Rule
 
 
 class RuleRegistry:

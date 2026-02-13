@@ -5,10 +5,10 @@ from __future__ import annotations
 import os
 import sys
 
-# Add the src directory to sys.path so we can import onnxdoctor
+# Add the src directory to sys.path so we can import onnx_doctor
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from onnxdoctor._loader import get_default_registry  # noqa: E402
+from onnx_doctor._loader import get_default_registry  # noqa: E402
 
 
 def generate_rule_page(rule, output_dir: str) -> None:

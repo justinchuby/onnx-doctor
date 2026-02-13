@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import onnx_ir as ir
 
-import onnxdoctor
-from onnxdoctor._rule import Rule
+import onnx_doctor
+from onnx_doctor._rule import Rule
 
 SP001 = Rule(
     code="SP001",
@@ -18,7 +18,7 @@ SP001 = Rule(
 )
 
 
-class SparsityAnalyzer(onnxdoctor.DiagnosticsProvider):
+class SparsityAnalyzer(onnx_doctor.DiagnosticsProvider):
     PRODUCER = "SparsityAnalyzer"
 
     def __init__(self, threshold: float = 1e-5):
@@ -26,11 +26,11 @@ class SparsityAnalyzer(onnxdoctor.DiagnosticsProvider):
 
     def check_tensor(
         self, tensor: ir.TensorProtocol
-    ) -> onnxdoctor.DiagnosticsMessageIterator:
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
         array = tensor.numpy()
         sparsity = np.count_nonzero(np.abs(array) <= self.threshold) / array.size
         if tensor is not None:
-            yield onnxdoctor.DiagnosticsMessage(
+            yield onnx_doctor.DiagnosticsMessage(
                 target_type="tensor",
                 target=tensor,
                 message=f"Sparsity is {sparsity * 100:.2f}%",

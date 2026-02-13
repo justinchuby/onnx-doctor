@@ -9,7 +9,7 @@ from typing import Sequence
 from rich.console import Console
 from rich.text import Text
 
-from onnxdoctor._message import DiagnosticsMessage
+from onnx_doctor._message import DiagnosticsMessage
 
 
 class TextFormatter:

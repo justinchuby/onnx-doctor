@@ -9,8 +9,8 @@ import pathlib
 
 import onnx_ir as ir
 
-import onnxdoctor
-from onnxdoctor._rule import Rule
+import onnx_doctor
+from onnx_doctor._rule import Rule
 
 _SPECIAL_OPS_TO_SKIP = {
     ("", "Constant"),
@@ -110,7 +110,7 @@ def _to_onnx_string_type_format(type_: ir.TypeProtocol) -> str:
     raise NotImplementedError(f"Type {type(type_)} is not supported.")
 
 
-class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
+class OnnxRuntimeCompatibilityLinter(onnx_doctor.DiagnosticsProvider):
     PRODUCER = "OnnxRuntimeCompatibilityLinter"
 
     def __init__(self, execution_provider: str = "CPUExecutionProvider"):
@@ -127,7 +127,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
 
     def check_model(
         self, model: ir.ModelProtocol
-    ) -> onnxdoctor.DiagnosticsMessageIterator:
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
         self.ir_version = model.ir_version
         self.opset_imports = model.opset_imports
         self.imported_functions = set(model.functions)
@@ -136,7 +136,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
 
     def check_node(  # noqa: PLR0912
         self, node: ir.NodeProtocol
-    ) -> onnxdoctor.DiagnosticsMessageIterator:
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
         function_op_id = (node.domain, node.op_type, node.overload)
         if function_op_id in self.imported_functions:
             # The op is a function op and the function is defined
@@ -146,7 +146,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
         if op_id in _SPECIAL_OPS_TO_SKIP:
             return
         if (schemas := self.support_table.get(op_id)) is None:
-            yield onnxdoctor.DiagnosticsMessage(
+            yield onnx_doctor.DiagnosticsMessage(
                 target_type="node",
                 target=node,
                 message=f"Operator {node.domain}::{node.op_type} not supported by {self.execution_provider} in ONNX Runtime.",
@@ -163,7 +163,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 found_schema = schema
                 break
         if found_schema is None:
-            yield onnxdoctor.DiagnosticsMessage(
+            yield onnx_doctor.DiagnosticsMessage(
                 target_type="node",
                 target=node,
                 message=(
@@ -191,7 +191,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 bounded_types[type_str] = input_.type
                 bounded_index[type_str] = i
             elif bounded_types[type_str] != input_.type:
-                yield onnxdoctor.DiagnosticsMessage(
+                yield onnx_doctor.DiagnosticsMessage(
                     target_type="node",
                     target=node,
                     message=(
@@ -212,7 +212,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 # TODO: Differentiate between input and output indices
                 bounded_index[type_str] = i
             elif bounded_types[type_str] != output.type:
-                yield onnxdoctor.DiagnosticsMessage(
+                yield onnx_doctor.DiagnosticsMessage(
                     target_type="node",
                     target=node,
                     message=(
@@ -236,7 +236,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
             # 3/3. Handle the <T> case
             supported_types = found_schema.type_constraints.get(type_str)
             if supported_types is None:
-                yield onnxdoctor.DiagnosticsMessage(
+                yield onnx_doctor.DiagnosticsMessage(
                     target_type="node",
                     target=node,
                     message=(
@@ -255,7 +255,7 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
                 # Special case: ONNX Runtime supports float16 on CPU by inserting a Cast node
                 continue
             if onnx_type not in supported_types:
-                yield onnxdoctor.DiagnosticsMessage(
+                yield onnx_doctor.DiagnosticsMessage(
                     target_type="node",
                     target=node,
                     message=(

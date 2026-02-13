@@ -37,10 +37,10 @@ Issues = "https://github.com/justinchuby/onnx-doctor/issues"
 Source = "https://github.com/justinchuby/onnx-doctor"
 
 [project.scripts]
-onnx-doctor = "onnxdoctor._cli:main"
+onnx-doctor = "onnx_doctor._cli:main"
 
 [tool.setuptools.package-data]
-onnxdoctor = ["*.json", "*.yaml"]
+onnx_doctor = ["*.json", "*.yaml"]
 
 [tool.pydocstyle]
 convention = "google"

@@ -7,8 +7,8 @@ from typing import Any
 
 import yaml
 
-from onnxdoctor._rule import Rule, RuleCategory, RuleSeverity, TargetType
-from onnxdoctor._rule_registry import RuleRegistry
+from onnx_doctor._rule import Rule, RuleCategory, RuleSeverity, TargetType
+from onnx_doctor._rule_registry import RuleRegistry
 
 _SPEC_YAML = pathlib.Path(__file__).parent / "diagnostics_providers" / "onnx_spec" / "spec.yaml"
 _PROTOBUF_YAML = pathlib.Path(__file__).parent / "diagnostics_providers" / "onnx_spec" / "protobuf.yaml"
