@@ -14,6 +14,7 @@ class CLITest(unittest.TestCase):
             [sys.executable, "-m", "onnx_doctor", *args],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             check=False,
             env=env,
         )
