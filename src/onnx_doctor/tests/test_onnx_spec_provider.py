@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest
 
+import numpy as np
 import onnx
 import onnx_ir as ir
 
@@ -274,6 +275,44 @@ class FixTest(unittest.TestCase):
                 self.assertIsNotNone(
                     msg.fix, f"{msg.error_code} is fixable but has no fix"
                 )
+
+    def test_no_false_onnx009_for_initializer_as_graph_output(self):
+        """Initializers used as subgraph outputs should not trigger ONNX009."""
+        # Build a model with an If node whose then_branch has an initializer as output
+        x = ir.Value(name="X")
+        cond = ir.Value(name="cond")
+
+        # Subgraph: initializer 'init_val' is a graph output (no producer node)
+        init_val = ir.Value(
+            name="init_val",
+            const_value=ir.Tensor(np.array([1.0], dtype=np.float32), name="init_val"),
+        )
+        sub_graph = ir.Graph(
+            inputs=[],
+            outputs=[init_val],
+            nodes=[],
+            initializers=[init_val],
+            name="then_branch",
+            opset_imports={"": 21},
+        )
+        if_node = ir.Node(
+            "",
+            "If",
+            inputs=[cond],
+            attributes=[ir.Attr("then_branch", ir.AttributeType.GRAPH, sub_graph)],
+            num_outputs=1,
+        )
+        graph = ir.Graph(
+            inputs=[x, cond],
+            outputs=[if_node.outputs[0]],
+            nodes=[if_node],
+            name="main",
+            opset_imports={"": 21},
+        )
+        model = ir.Model(graph, ir_version=9)
+        messages = _diagnose(model)
+        onnx009_codes = [m for m in messages if m.error_code == "ONNX009"]
+        self.assertEqual(onnx009_codes, [], f"Unexpected ONNX009: {onnx009_codes}")
 
 
 if __name__ == "__main__":

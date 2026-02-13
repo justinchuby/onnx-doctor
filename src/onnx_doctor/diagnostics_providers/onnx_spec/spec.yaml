@@ -83,7 +83,7 @@ rules:
       severity: error
       fixable: true
       message: Graph output is not produced by any node in the graph.
-      suggestion: Ensure the graph output is an output of a node within the graph, or apply `--fix` to insert Identity nodes with `OutputFixPass`.
+      suggestion: Ensure the graph output is an output of a node within the graph or a graph input.
       explanation: |
         ## Details
         Every graph output must be produced by a node within the same graph,

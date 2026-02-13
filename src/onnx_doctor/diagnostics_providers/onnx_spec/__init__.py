@@ -282,7 +282,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         # ONNX009: graph-output-not-produced
         for out in graph.outputs:
             producer = out.producer()
-            if producer is None and not out.is_graph_input():
+            if producer is None and not out.is_graph_input() and not out.is_initializer():
                 yield _emit(
                     _rule("ONNX009"),
                     "graph",
@@ -295,6 +295,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     "graph",
                     graph,
                     message=f"Graph output '{out.name}' is produced in a different graph.",
+                    suggestion="Apply `--fix` to insert Identity nodes with `OutputFixPass`.",
                     fix=lambda: _apply_output_fix(self._model),
                 )
 
