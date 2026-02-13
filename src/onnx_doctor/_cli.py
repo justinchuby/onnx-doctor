@@ -165,9 +165,9 @@ def _cmd_explain(args: argparse.Namespace) -> int:
         )
         return 1
 
-    from rich.console import Console
-    from rich.markdown import Markdown
-    from rich.text import Text
+    from rich.console import Console  # noqa: PLC0415
+    from rich.markdown import Markdown  # noqa: PLC0415
+    from rich.text import Text  # noqa: PLC0415
 
     console = Console()
 
@@ -199,8 +199,8 @@ def _cmd_list_rules(_args: argparse.Namespace) -> int:
     """List all available rules."""
     registry = get_default_registry()
 
-    from rich.console import Console
-    from rich.table import Table
+    from rich.console import Console  # noqa: PLC0415
+    from rich.table import Table  # noqa: PLC0415
 
     console = Console()
     table = Table(title="Available Rules")
