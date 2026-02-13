@@ -85,7 +85,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Execution provider for ORT checks (default: CPUExecutionProvider).",
     )
 
-
     # explain command
     explain_parser = subparsers.add_parser(
         "explain", help="Show detailed explanation for a rule."

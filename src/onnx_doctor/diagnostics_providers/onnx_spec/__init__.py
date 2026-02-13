@@ -285,7 +285,11 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         # ONNX009: graph-output-not-produced
         for out in graph.outputs:
             producer = out.producer()
-            if producer is None and not out.is_graph_input() and not out.is_initializer():
+            if (
+                producer is None
+                and not out.is_graph_input()
+                and not out.is_initializer()
+            ):
                 yield _emit(
                     _rule("ONNX009"),
                     "graph",
