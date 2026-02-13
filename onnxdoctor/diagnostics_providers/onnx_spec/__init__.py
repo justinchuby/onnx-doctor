@@ -1,1 +1,0 @@
-"""ONNX spec linter."""

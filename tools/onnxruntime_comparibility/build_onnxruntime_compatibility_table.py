@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from typing import Tuple
+from typing import TYPE_CHECKING
 
 import onnxruntime.capi.onnxruntime_pybind11_state as ort_api
 
-# NOTE: get_all_opkernel_def() segfaults on MacOS
+if TYPE_CHECKING:
+    import onnx_ir as ir
 
-OpId = Tuple[str, str, int]
+# NOTE: get_all_opkernel_def() segfaults on MacOS
 
 
 @dataclasses.dataclass
@@ -29,7 +30,7 @@ class OnnxRuntimeOpSchema:
 
 def get_supported_schemas() -> list[OnnxRuntimeOpSchema]:
     op_schemas = ort_api.get_all_operator_schema()
-    op_information: dict[OpId, OnnxRuntimeOpSchema] = {}
+    op_information: dict[ir.OpIdentifier, OnnxRuntimeOpSchema] = {}
     for schema in op_schemas:
         op_information[(schema.domain, schema.name, schema.since_version)] = (
             OnnxRuntimeOpSchema(
