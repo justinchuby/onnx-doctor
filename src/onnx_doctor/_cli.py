@@ -338,7 +338,7 @@ def _cmd_list_rules(_args: argparse.Namespace) -> int:
             rule.code,
             rule.name,
             f"[{severity_style}]{rule.default_severity}[/{severity_style}]",
-            "[green]🔧[/green]" if rule.fixable else "",
+            "[green]fixable[/green]" if rule.fixable else "",
             rule.target_type,
             rule.message,
         )

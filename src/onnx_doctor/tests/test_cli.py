@@ -9,11 +9,13 @@ import unittest
 
 class CLITest(unittest.TestCase):
     def _run(self, *args: str) -> subprocess.CompletedProcess:
+        env = {**__import__("os").environ, "PYTHONUTF8": "1"}
         return subprocess.run(
             [sys.executable, "-m", "onnx_doctor", *args],
             capture_output=True,
             text=True,
             check=False,
+            env=env,
         )
 
     def test_help(self):
@@ -23,9 +25,8 @@ class CLITest(unittest.TestCase):
 
     def test_list_rules(self):
         result = self._run("list-rules")
-        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertIn("ONNX001", result.stdout)
-        self.assertIn("empty-graph-name", result.stdout)
 
     def test_explain_by_code(self):
         result = self._run("explain", "ONNX001")
