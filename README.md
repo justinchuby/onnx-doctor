@@ -4,4 +4,170 @@
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/onnx-doctor.svg)](https://pypi.org/project/onnx-doctor)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-Diagnose your ONNX model
+An extensible linter for ONNX models — like [ruff](https://github.com/astral-sh/ruff), but for ONNX. Catch spec violations, compatibility issues, and common pitfalls with clear messages and actionable suggestions.
+
+## Installation
+
+```bash
+pip install onnx-doctor
+```
+
+## Quick Start
+
+### CLI
+
+Check a model for issues:
+
+```bash
+onnx-doctor check model.onnx
+```
+
+Example output:
+
+```
+model.onnx:model ONNX013 Model ir_version 13 is newer than the checker supports (max 10).
+  suggestion: Upgrade onnx-doctor or downgrade the model's ir_version.
+model.onnx:graph ONNX001 Graph name is empty.
+  suggestion: Set the name of the graph, e.g. `graph.name = 'main_graph'`.
+
+Found 1 error, 1 warning.
+```
+
+### Programmatic API
+
+```python
+import onnx_ir as ir
+import onnx_doctor
+from onnx_doctor.diagnostics_providers import OnnxSpecProvider
+
+model = ir.load("model.onnx")
+messages = onnx_doctor.diagnose(model, [OnnxSpecProvider()])
+
+for msg in messages:
+    print(f"[{msg.severity}] {msg.error_code}: {msg.message}")
+```
+
+## CLI Reference
+
+```
+onnx-doctor <command> [options]
+```
+
+### `check` — Lint an ONNX model
+
+```bash
+onnx-doctor check model.onnx [options]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--select CODE [...]` | Only report rules matching these codes or prefixes (e.g. `ONNX001`, `ONNX`). |
+| `--ignore CODE [...]` | Ignore rules matching these codes or prefixes. |
+| `--output-format {text,json,github}` | Output format. Default: `text`. |
+| `--severity {error,warning,info}` | Minimum severity to report. |
+
+**Exit codes:** `0` = no errors (warnings may be present), `1` = errors found.
+
+Examples:
+
+```bash
+# Ignore ir-version warnings
+onnx-doctor check model.onnx --ignore ONNX013
+
+# Only show errors
+onnx-doctor check model.onnx --severity error
+
+# JSON output for CI
+onnx-doctor check model.onnx --output-format json
+
+# GitHub Actions annotations
+onnx-doctor check model.onnx --output-format github
+```
+
+JSON output example:
+
+```json
+[
+  {
+    "file": "model.onnx",
+    "code": "ONNX001",
+    "severity": "error",
+    "message": "Graph name is empty.",
+    "target_type": "graph",
+    "rule_name": "empty-graph-name",
+    "suggestion": "Set the name of the graph, e.g. `graph.name = 'main_graph'`."
+  }
+]
+```
+
+### `explain` — Show rule details
+
+```bash
+onnx-doctor explain ONNX001
+```
+
+```
+ONNX001: empty-graph-name
+
+  Message: Graph name is empty.
+  Severity: error
+  Category: spec
+  Target: graph
+
+  Suggestion: Set the name of the graph, e.g. `graph.name = 'main_graph'`.
+
+  ## Details
+  The 'name' field of a graph must not be empty per the ONNX spec.
+```
+
+You can also look up rules by name:
+
+```bash
+onnx-doctor explain empty-graph-name
+```
+
+### `list-rules` — Show all available rules
+
+```bash
+onnx-doctor list-rules
+```
+
+## Rules
+
+ONNX Doctor ships with **48 built-in rules** across three providers:
+
+| Prefix | Provider | Description |
+|--------|----------|-------------|
+| `ONNX` | ONNX Spec | 35 rules for ONNX spec compliance (graph, model, node, value, tensor, function) |
+| `PB` | Protobuf | 13 rules for protobuf-specific issues |
+| `ORT` | ORT Compatibility | ONNX Runtime compatibility checks |
+| `SP` | Sparsity | Tensor sparsity analysis |
+
+## Writing Custom Providers
+
+Create your own rules by subclassing `DiagnosticsProvider`:
+
+```python
+import onnx_ir as ir
+import onnx_doctor
+
+class MyProvider(onnx_doctor.DiagnosticsProvider):
+    def check_graph(self, graph: ir.GraphProtocol):
+        node_count = sum(1 for _ in graph)
+        if node_count > 1000:
+            yield onnx_doctor.DiagnosticsMessage(
+                target_type="graph",
+                target=graph,
+                message=f"Graph has {node_count} nodes — consider optimizing.",
+                severity="warning",
+                producer="MyProvider",
+                error_code="CUSTOM001",
+            )
+
+model = ir.load("model.onnx")
+messages = onnx_doctor.diagnose(model, [MyProvider()])
+```
+
+## License
+
+[MIT](LICENSE)
