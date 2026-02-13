@@ -8,7 +8,7 @@ from typing import Any, Sequence
 import onnx
 import onnx_ir as ir
 
-METADATA_KEY_ID = "pkg.onnxdoctor.chronology.object_id"
+METADATA_KEY_ID = "pkg.onnx_doctor.chronology.object_id"
 
 
 @dataclasses.dataclass
