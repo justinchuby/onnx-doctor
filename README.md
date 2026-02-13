@@ -2,6 +2,7 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/onnx-doctor.svg)](https://pypi.org/project/onnx-doctor)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/onnx-doctor.svg)](https://pypi.org/project/onnx-doctor)
+[![Documentation](https://readthedocs.org/projects/onnx-doctor/badge/?version=latest)](https://onnx-doctor.readthedocs.io)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 An extensible linter for ONNX models — like [ruff](https://github.com/astral-sh/ruff), but for ONNX. Catch spec violations, compatibility issues, and common pitfalls with clear messages and actionable suggestions.
