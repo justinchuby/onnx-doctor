@@ -30,7 +30,7 @@ classifiers = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/justinchuby/onnx-doctor#readme"
+Documentation = "https://onnx-doctor.readthedocs.io"
 Issues = "https://github.com/justinchuby/onnx-doctor/issues"
 Source = "https://github.com/justinchuby/onnx-doctor"
 
