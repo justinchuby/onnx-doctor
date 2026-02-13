@@ -1,4 +1,4 @@
-"""Generate RST rule reference pages from the rule registry."""
+"""Generate markdown rule reference pages from the rule registry."""
 
 from __future__ import annotations
 
@@ -12,15 +12,14 @@ from onnx_doctor._loader import get_default_registry  # noqa: E402
 
 
 def generate_rule_page(rule, output_dir: str) -> None:
-    """Generate an RST page for a single rule."""
-    path = os.path.join(output_dir, f"{rule.code}.rst")
+    """Generate a markdown page for a single rule."""
+    path = os.path.join(output_dir, f"{rule.code}.md")
     lines = [
-        f"{rule.code}: {rule.name}",
-        "=" * len(f"{rule.code}: {rule.name}"),
+        f"# {rule.code}: {rule.name}",
         "",
-        f"**Code:** ``{rule.code}``",
+        f"**Code:** `{rule.code}`",
         "",
-        f"**Name:** ``{rule.name}``",
+        f"**Name:** `{rule.name}`",
         "",
         f"**Severity:** {rule.default_severity}",
         "",
@@ -28,8 +27,7 @@ def generate_rule_page(rule, output_dir: str) -> None:
         "",
         f"**Target:** {rule.target_type}",
         "",
-        "Message",
-        "-------",
+        "## Message",
         "",
         rule.message,
         "",
@@ -37,8 +35,7 @@ def generate_rule_page(rule, output_dir: str) -> None:
 
     if rule.suggestion:
         lines.extend([
-            "Suggestion",
-            "----------",
+            "## Suggestion",
             "",
             rule.suggestion,
             "",
@@ -46,8 +43,7 @@ def generate_rule_page(rule, output_dir: str) -> None:
 
     if rule.explanation:
         lines.extend([
-            "Details",
-            "-------",
+            "## Details",
             "",
             rule.explanation,
             "",
@@ -58,11 +54,10 @@ def generate_rule_page(rule, output_dir: str) -> None:
 
 
 def generate_index(rules, output_dir: str) -> None:
-    """Generate the rules index page."""
+    """Generate the rules index page in markdown."""
     # Group by prefix
     by_prefix: dict[str, list] = {}
     for rule in rules:
-        # Extract prefix (all non-digit chars at start)
         prefix = ""
         for c in rule.code:
             if c.isdigit():
@@ -71,8 +66,7 @@ def generate_index(rules, output_dir: str) -> None:
         by_prefix.setdefault(prefix, []).append(rule)
 
     lines = [
-        "Rule Reference",
-        "==============",
+        "# Rule Reference",
         "",
         f"ONNX Doctor includes **{len(rules)} rules** across multiple providers.",
         "",
@@ -80,43 +74,31 @@ def generate_index(rules, output_dir: str) -> None:
 
     for prefix, prefix_rules in sorted(by_prefix.items()):
         lines.extend([
-            f"{prefix} Rules",
-            "-" * len(f"{prefix} Rules"),
+            f"## {prefix} Rules",
             "",
-            ".. list-table::",
-            "   :header-rows: 1",
-            "   :widths: 15 30 12 12 31",
-            "",
-            "   * - Code",
-            "     - Name",
-            "     - Severity",
-            "     - Target",
-            "     - Message",
+            "| Code | Name | Severity | Target | Message |",
+            "|------|------|----------|--------|---------|",
         ])
 
         for rule in prefix_rules:
-            lines.extend([
-                f"   * - :doc:`{rule.code}`",
-                f"     - ``{rule.name}``",
-                f"     - {rule.default_severity}",
-                f"     - {rule.target_type}",
-                f"     - {rule.message}",
-            ])
+            lines.append(
+                f"| [{rule.code}]({rule.code}.md) | `{rule.name}` | {rule.default_severity} | {rule.target_type} | {rule.message} |"
+            )
 
         lines.append("")
 
-    # Add toctree
+    # Add toctree (MyST syntax)
     lines.extend([
-        ".. toctree::",
-        "   :hidden:",
-        "   :maxdepth: 1",
+        "```{toctree}",
+        ":hidden:",
+        ":maxdepth: 1",
         "",
     ])
     for rule in rules:
-        lines.append(f"   {rule.code}")
-    lines.append("")
+        lines.append(rule.code)
+    lines.extend(["```", ""])
 
-    path = os.path.join(output_dir, "index.rst")
+    path = os.path.join(output_dir, "index.md")
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 

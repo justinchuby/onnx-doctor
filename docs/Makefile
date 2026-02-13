@@ -15,6 +15,6 @@ html: rules
 	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)"
 
 clean:
-	rm -rf $(BUILDDIR) rules/*.rst
+	rm -rf $(BUILDDIR) rules/*.md
 
 .PHONY: help html clean rules
