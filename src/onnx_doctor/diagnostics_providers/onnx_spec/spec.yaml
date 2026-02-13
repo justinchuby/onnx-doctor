@@ -113,37 +113,72 @@ rules:
         creates ambiguity in value resolution.
 
     - code: ONNX036
-      name: graph-io-missing-type
+      name: graph-input-missing-type
       category: spec
       severity: error
-      message: Graph input or output is missing type information.
-      suggestion: Set the type on all graph inputs and outputs, e.g. `value.type = ir.TensorType(ir.DataType.FLOAT)`.
+      message: Graph input is missing type information.
+      suggestion: Set the type on all graph inputs, e.g. `value.type = ir.TensorType(ir.DataType.FLOAT)`.
       explanation: |
         ## Details
-        Per the ONNX specification, graph inputs and outputs must have type
-        information. Runtimes use these types to allocate memory, validate
-        feeds, and verify output shapes.
+        Per the ONNX specification, graph inputs must have type information.
+        Runtimes use these types to allocate memory and validate feeds.
 
     - code: ONNX037
-      name: graph-io-missing-shape
+      name: graph-input-missing-shape
       category: spec
       severity: error
-      message: Graph input or output is missing shape information.
-      suggestion: Set the shape on all graph inputs and outputs, e.g. `value.shape = ir.Shape([1, 3])`.
+      message: Graph input is missing shape information.
+      suggestion: Set the shape on all graph inputs, e.g. `value.shape = ir.Shape([1, 3])`.
       explanation: |
         ## Details
-        Per the ONNX specification, graph inputs and outputs must have shape
-        information. Runtimes use shapes to allocate memory and validate feeds.
+        Per the ONNX specification, graph inputs must have shape information.
+        Runtimes use shapes to allocate memory and validate feeds.
+
+    - code: ONNX038
+      name: graph-output-missing-type
+      category: spec
+      severity: error
+      message: Graph output is missing type information.
+      suggestion: Run shape inference on the model, e.g. `onnx.shape_inference.infer_shapes(model)`.
+      explanation: |
+        ## Details
+        Per the ONNX specification, graph outputs must have type information.
+        Runtimes use these types to validate output shapes. Running shape
+        inference can often resolve this automatically.
+
+    - code: ONNX039
+      name: graph-output-missing-shape
+      category: spec
+      severity: error
+      message: Graph output is missing shape information.
+      suggestion: Run shape inference on the model, e.g. `onnx.shape_inference.infer_shapes(model)`.
+      explanation: |
+        ## Details
+        Per the ONNX specification, graph outputs must have shape information.
+        Runtimes use shapes to allocate memory. Running shape inference can
+        often resolve this automatically.
 
     - code: ONNX101
-      name: duplicate-graph-io
+      name: duplicate-graph-input
       category: ir
       severity: error
-      message: Duplicate Value objects in graph inputs or outputs.
-      suggestion: Remove the duplicate Value references from graph inputs/outputs.
+      message: Duplicate Value object in graph inputs.
+      suggestion: Remove the duplicate Value references from graph inputs.
       explanation: |
         ## Details
-        Each Value object in a graph's inputs and outputs must appear only once.
+        Each Value object in a graph's inputs must appear only once.
+        In onnx_ir, this checks object identity (not just name equality).
+
+    - code: ONNX102
+      name: duplicate-graph-output
+      category: ir
+      severity: error
+      fixable: true
+      message: Duplicate Value object in graph outputs.
+      suggestion: Remove the duplicate Value references from graph outputs, or apply `--fix` to insert Identity nodes with `OutputFixPass`.
+      explanation: |
+        ## Details
+        Each Value object in a graph's outputs must appear only once.
         In onnx_ir, this checks object identity (not just name equality).
 
         ## Example
@@ -158,7 +193,7 @@ rules:
         graph.outputs[:] = unique_outputs
         ```
 
-    - code: ONNX102
+    - code: ONNX103
       name: empty-value-name
       category: ir
       severity: warning

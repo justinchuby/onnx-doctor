@@ -107,7 +107,7 @@ From `onnx_ir.passes.common` (all take `model: ir.Model`, return `PassResult`):
 
 | Pass | Used by | Description |
 |------|---------|-------------|
-| `NameFixPass` | ONNX003, ONNX102 | Auto-names all unnamed values and nodes |
+| `NameFixPass` | ONNX003, ONNX103 | Auto-names all unnamed values and nodes |
 | `OutputFixPass` | ONNX009 | Inserts Identity nodes for invalid output configurations |
 | `RemoveUnusedFunctionsPass` | SIM001 | Removes unreferenced functions |
 | `RemoveUnusedNodesPass` | SIM003 | Removes dead nodes and unused initializers |
@@ -138,7 +138,7 @@ From `onnx_ir.passes.common` (all take `model: ir.Model`, return `PassResult`):
 
 | Provider | Module | Rules | Notes |
 |----------|--------|-------|-------|
-| `OnnxSpecProvider` | `diagnostics_providers/onnx_spec/` | ONNX001–ONNX102 (YAML) | Default, always enabled |
+| `OnnxSpecProvider` | `diagnostics_providers/onnx_spec/` | ONNX001–ONNX103 (YAML) | Default, always enabled |
 | (protobuf rules) | `diagnostics_providers/onnx_spec/` | PB001–PB013 (YAML) | Registered but no Python checker yet |
 | `SimplificationProvider` | `diagnostics_providers/simplification/` | SIM001–SIM003 (YAML) | Default, always enabled |
 | `OnnxRuntimeCompatibilityLinter` | `diagnostics_providers/onnxruntime_compatibility/` | ORT001–ORT005 (Python) | Opt-in via `--ort` flag |

@@ -125,7 +125,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         # ONNX036/ONNX037: only apply to the root graph, not subgraphs
         is_root_graph = self._root_graph is not None and graph is self._root_graph
 
-        # ONNX036: graph-io-missing-type / ONNX037: graph-io-missing-shape
+        # ONNX036/ONNX037: input type/shape, ONNX038/ONNX039: output type/shape
         if is_root_graph:
             for value in graph.inputs:
                 if value.type is None:
@@ -145,20 +145,20 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             for value in graph.outputs:
                 if value.type is None:
                     yield _emit(
-                        _rule("ONNX036"),
+                        _rule("ONNX038"),
                         "graph",
                         graph,
                         message=f"Graph output '{value.name}' is missing type information.",
                     )
                 elif value.shape is None:
                     yield _emit(
-                        _rule("ONNX037"),
+                        _rule("ONNX039"),
                         "graph",
                         graph,
                         message=f"Graph output '{value.name}' is missing shape information.",
                     )
 
-        # ONNX101: duplicate-graph-io
+        # ONNX101: duplicate-graph-input
         seen: set[ir.Value] = set()
         for value in graph.inputs:
             if value in seen:
@@ -169,14 +169,17 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     message=f"Duplicate Value object in graph inputs: '{value.name}'.",
                 )
             seen.add(value)
+
+        # ONNX102: duplicate-graph-output
         seen.clear()
         for value in graph.outputs:
             if value in seen:
                 yield _emit(
-                    _rule("ONNX101"),
+                    _rule("ONNX102"),
                     "graph",
                     graph,
                     message=f"Duplicate Value object in graph outputs: '{value.name}'.",
+                    fix=lambda: _apply_output_fix(self._model),
                 )
             seen.add(value)
 
@@ -353,10 +356,10 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 )
 
     def check_value(self, value: ir.Value) -> onnx_doctor.DiagnosticsMessageIterator:
-        # ONNX102: empty-value-name
+        # ONNX103: empty-value-name
         if not value.name:
             yield _emit(
-                _rule("ONNX102"),
+                _rule("ONNX103"),
                 "node",
                 value,
                 fix=lambda: _apply_name_fix(self._model),

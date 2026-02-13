@@ -164,11 +164,11 @@ onnx-doctor list-rules
 
 ## Rules
 
-ONNX Doctor ships with **58 built-in rules** across five providers:
+ONNX Doctor ships with **59 built-in rules** across five providers:
 
 | Prefix | Provider | Description |
 |--------|----------|-------------|
-| `ONNX` | ONNX Spec | 37 rules for ONNX spec compliance (graph, model, node, value, tensor, function) |
+| `ONNX` | ONNX Spec | 38 rules for ONNX spec compliance (graph, model, node, value, tensor, function) |
 | `PB` | Protobuf | 13 rules for protobuf-specific issues |
 | `SIM` | Simplification | 3 rules for removing unused elements (functions, opsets, nodes) |
 | `ORT` | ORT Compatibility | 5 rules for ONNX Runtime compatibility checks (opt-in via `--ort`) |
