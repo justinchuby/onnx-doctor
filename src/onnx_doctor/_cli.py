@@ -230,15 +230,15 @@ def _cmd_check(args: argparse.Namespace) -> int:
         return 0
 
     # Apply fixes if requested
+    fix_summary: str | None = None
     if args.fix:
         applied = _apply_fixes(filtered)
         if applied > 0:
             output_path = args.output or model_path
             ir.save(model, output_path)
-            print(
+            fix_summary = (
                 f"Applied {applied} fix{'es' if applied != 1 else ''}, "
-                f"saved to {output_path}.",
-                file=sys.stderr,
+                f"saved to {output_path}."
             )
             # Re-run diagnostics on the fixed model to show remaining issues
             messages = onnx_doctor.diagnose(model, providers)
@@ -249,7 +249,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
                 min_severity=args.severity,
             )
         else:
-            print("No fixable issues found.", file=sys.stderr)
+            fix_summary = "No fixable issues found."
 
     # Format output
     if args.output_format == "json":
@@ -260,6 +260,9 @@ def _cmd_check(args: argparse.Namespace) -> int:
         formatter = TextFormatter(file_path=model_path)
 
     formatter.format(filtered)
+
+    if fix_summary:
+        print(fix_summary, file=sys.stderr)
 
     # Exit code: 1 if any errors
     has_errors = any(m.severity == "error" for m in filtered)
