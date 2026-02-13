@@ -30,6 +30,7 @@ def _emit(
     message: str | None = None,
     suggestion: str | None = None,
     location: str | None = None,
+    fix: onnx_doctor._message.Fix | None = None,
 ) -> onnx_doctor.DiagnosticsMessage:
     """Create a DiagnosticsMessage from a rule."""
     return onnx_doctor.DiagnosticsMessage(
@@ -42,6 +43,7 @@ def _emit(
         rule=rule,
         suggestion=suggestion or rule.suggestion or None,
         location=location,
+        fix=fix,
     )
 
 
@@ -111,7 +113,10 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
     def check_graph(self, graph: ir.Graph) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX001: empty-graph-name
         if not graph.name:
-            yield _emit(_rule("ONNX001"), "graph", graph)
+            yield _emit(
+                _rule("ONNX001"), "graph", graph,
+                fix=lambda: setattr(graph, "name", "main_graph"),
+            )
 
         # ONNX036/ONNX037: only apply to the root graph, not subgraphs
         is_root_graph = self._root_graph is not None and graph is self._root_graph
@@ -212,7 +217,10 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 known_values.add(out)
 
         if not is_sorted:
-            yield _emit(_rule("ONNX004"), "graph", graph)
+            yield _emit(
+                _rule("ONNX004"), "graph", graph,
+                fix=graph.sort,
+            )
 
         # ONNX006: experimental-op
         for node in graph:
@@ -493,7 +501,10 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     assigned_names[out.name] = assigned_names.get(out.name, 0) + 1
 
         if unsorted:
-            yield _emit(_rule("ONNX033"), "function", function)
+            yield _emit(
+                _rule("ONNX033"), "function", function,
+                fix=function.sort,
+            )
 
         for name, count in assigned_names.items():
             if count > 1:

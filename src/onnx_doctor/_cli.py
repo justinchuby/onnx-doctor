@@ -52,6 +52,19 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Minimum severity to report.",
     )
+    check_parser.add_argument(
+        "--fix",
+        action="store_true",
+        default=False,
+        help="Apply available fixes and save the model.",
+    )
+    check_parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default=None,
+        help="Output path for the fixed model (default: overwrite the input file). Only used with --fix.",
+    )
 
     # explain command
     explain_parser = subparsers.add_parser(
@@ -110,6 +123,18 @@ def _filter_messages(
     return filtered
 
 
+def _apply_fixes(
+    messages: Sequence[onnx_doctor.DiagnosticsMessage],
+) -> int:
+    """Apply all available fixes. Returns the number of fixes applied."""
+    applied = 0
+    for msg in messages:
+        if msg.fix is not None:
+            msg.fix()
+            applied += 1
+    return applied
+
+
 def _get_providers() -> list[onnx_doctor.DiagnosticsProvider]:
     """Get the default set of providers."""
     return [OnnxSpecProvider()]
@@ -137,6 +162,28 @@ def _cmd_check(args: argparse.Namespace) -> int:
         ignore=args.ignore,
         min_severity=args.severity,
     )
+
+    # Apply fixes if requested
+    if args.fix:
+        applied = _apply_fixes(filtered)
+        if applied > 0:
+            output_path = args.output or model_path
+            ir.save(model, output_path)
+            print(
+                f"Applied {applied} fix{'es' if applied != 1 else ''}, "
+                f"saved to {output_path}.",
+                file=sys.stderr,
+            )
+            # Re-run diagnostics on the fixed model to show remaining issues
+            messages = onnx_doctor.diagnose(model, providers)
+            filtered = _filter_messages(
+                messages,
+                select=args.select,
+                ignore=args.ignore,
+                min_severity=args.severity,
+            )
+        else:
+            print("No fixable issues found.", file=sys.stderr)
 
     # Format output
     if args.output_format == "json":
@@ -183,6 +230,7 @@ def _cmd_explain(args: argparse.Namespace) -> int:
     console.print(Text(f"  Severity: {rule.default_severity}"))
     console.print(Text(f"  Category: {rule.category}"))
     console.print(Text(f"  Target: {rule.target_type}"))
+    console.print(Text(f"  Fixable: {'yes' if rule.fixable else 'no'}"))
 
     if rule.suggestion:
         console.print()
@@ -207,6 +255,7 @@ def _cmd_list_rules(_args: argparse.Namespace) -> int:
     table.add_column("Code", style="bold cyan", no_wrap=True)
     table.add_column("Name", style="bold")
     table.add_column("Severity")
+    table.add_column("Fix", no_wrap=True)
     table.add_column("Target")
     table.add_column("Message")
 
@@ -221,6 +270,7 @@ def _cmd_list_rules(_args: argparse.Namespace) -> int:
             rule.code,
             rule.name,
             f"[{severity_style}]{rule.default_severity}[/{severity_style}]",
+            "[green]🔧[/green]" if rule.fixable else "",
             rule.target_type,
             rule.message,
         )

@@ -48,6 +48,8 @@ class TextFormatter:
         line.append(" ")
         line.append(msg.error_code, style=color)
         line.append(" ")
+        if msg.fix is not None:
+            line.append("[*] ", style="bold green")
         line.append(msg.message)
 
         self._console.print(line)
@@ -68,6 +70,7 @@ class TextFormatter:
         errors = sum(1 for m in messages if m.severity == "error")
         warnings = sum(1 for m in messages if m.severity == "warning")
         infos = sum(1 for m in messages if m.severity not in ("error", "warning"))
+        fixable = sum(1 for m in messages if m.fix is not None)
 
         parts = []
         if errors:
@@ -82,6 +85,8 @@ class TextFormatter:
             summary.append("\nFound ", style="bold")
             summary.append(", ".join(parts), style="bold")
             summary.append(".", style="bold")
+            if fixable:
+                summary.append(f"\n[*] {fixable} fixable with `--fix`.", style="bold green")
             self._console.print(summary)
         else:
             self._console.print(Text("\nAll checks passed.", style="bold green"))

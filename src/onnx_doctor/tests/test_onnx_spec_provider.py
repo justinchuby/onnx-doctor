@@ -179,5 +179,50 @@ class DiagnosticsMessageFieldsTest(unittest.TestCase):
         self.assertTrue(msg.suggestion or msg.rule.suggestion)
 
 
+class FixTest(unittest.TestCase):
+    def test_onnx001_fix_sets_graph_name(self):
+        model = _make_model(graph_name="")
+        messages = _diagnose(model)
+        onnx001 = [m for m in messages if m.error_code == "ONNX001"]
+        self.assertTrue(len(onnx001) > 0)
+        msg = onnx001[0]
+        self.assertIsNotNone(msg.fix)
+        # Apply the fix
+        msg.fix()
+        self.assertEqual(model.graph.name, "main_graph")
+        # Re-diagnose should not have ONNX001
+        messages2 = _diagnose(model)
+        self.assertNotIn("ONNX001", _codes(messages2))
+
+    def test_onnx004_fix_sorts_graph(self):
+        # Create a model with unsorted nodes
+        x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
+        z_info = onnx.helper.make_tensor_value_info("Z", onnx.TensorProto.FLOAT, [1])
+        node1 = onnx.helper.make_node("Relu", ["Y"], ["Z"])
+        node2 = onnx.helper.make_node("Relu", ["X"], ["Y"])
+        graph = onnx.helper.make_graph([node1, node2], "test", [x_info], [z_info])
+        model_proto = onnx.helper.make_model(
+            graph, opset_imports=[onnx.helper.make_opsetid("", 21)]
+        )
+        model = ir.serde.deserialize_model(model_proto)
+        messages = _diagnose(model)
+        onnx004 = [m for m in messages if m.error_code == "ONNX004"]
+        self.assertTrue(len(onnx004) > 0)
+        msg = onnx004[0]
+        self.assertIsNotNone(msg.fix)
+        # Apply the fix
+        msg.fix()
+        # Re-diagnose should not have ONNX004
+        messages2 = _diagnose(model)
+        self.assertNotIn("ONNX004", _codes(messages2))
+
+    def test_fixable_messages_have_fix_callable(self):
+        model = _make_model(graph_name="")
+        messages = _diagnose(model)
+        for msg in messages:
+            if msg.rule and msg.rule.fixable:
+                self.assertIsNotNone(msg.fix, f"{msg.error_code} is fixable but has no fix")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4,6 +4,7 @@ rules:
       name: empty-graph-name
       category: spec
       severity: error
+      fixable: true
       message: Graph name is empty.
       suggestion: Set the name of the graph, e.g. `graph.name = 'main_graph'`.
       explanation: |
@@ -29,6 +30,7 @@ rules:
       name: unsorted-graph-nodes
       category: spec
       severity: error
+      fixable: true
       message: Graph nodes are not in topological order.
       suggestion: Sort the nodes in topological order with `graph.sort()`.
       explanation: |
@@ -406,6 +408,7 @@ rules:
       name: unsorted-function-nodes
       category: spec
       severity: error
+      fixable: true
       message: Function nodes are not in topological order.
       suggestion: Sort the function's nodes in topological order.
       explanation: |

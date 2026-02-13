@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Callable
 from typing import Literal, Union
 
 import onnx_ir as ir
@@ -32,6 +33,9 @@ PossibleSeverities = Literal[
     "error", "warning", "info", "recommendation", "debug", "failure"
 ]
 
+# A fix is a callable that takes no arguments and mutates the IR in place.
+Fix = Callable[[], None]
+
 
 @dataclasses.dataclass
 class DiagnosticsMessage:
@@ -46,3 +50,4 @@ class DiagnosticsMessage:
     rule: Rule | None = None
     suggestion: str | None = None
     location: str | None = None
+    fix: Fix | None = None

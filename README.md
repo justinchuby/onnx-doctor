@@ -77,6 +77,8 @@ onnx-doctor check model.onnx [options]
 | `--ignore CODE [...]` | Ignore rules matching these codes or prefixes. |
 | `--output-format {text,json,github}` | Output format. Default: `text`. |
 | `--severity {error,warning,info}` | Minimum severity to report. |
+| `--fix` | Apply available fixes and save the model. |
+| `-o, --output PATH` | Output path for the fixed model (default: overwrite input). Only used with `--fix`. |
 
 **Exit codes:** `0` = no errors (warnings may be present), `1` = errors found.
 
@@ -88,6 +90,12 @@ onnx-doctor check model.onnx --ignore ONNX013
 
 # Only show errors
 onnx-doctor check model.onnx --severity error
+
+# Apply auto-fixes in place
+onnx-doctor check model.onnx --fix
+
+# Apply auto-fixes to a new file
+onnx-doctor check model.onnx --fix -o fixed_model.onnx
 
 # JSON output for CI
 onnx-doctor check model.onnx --output-format json
