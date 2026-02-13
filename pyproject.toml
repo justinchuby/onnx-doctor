@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "onnx-doctor"
-version = "0.0.2"
+version = "0.1.0"
 dependencies = [
-    "onnx>=1.16",
-    "onnxscript",
+    "onnx>=1.19",
+    "onnx-ir>=0.1.16",
     "pyyaml",
     "rich",
 ]
