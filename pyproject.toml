@@ -38,7 +38,7 @@ Source = "https://github.com/justinchuby/onnx-doctor"
 onnx-doctor = "onnx_doctor._cli:main"
 
 [tool.setuptools.package-data]
-onnx_doctor = ["*.json", "*.yaml"]
+onnx_doctor = ["**/*.json", "**/*.yaml"]
 
 [tool.pydocstyle]
 convention = "google"
