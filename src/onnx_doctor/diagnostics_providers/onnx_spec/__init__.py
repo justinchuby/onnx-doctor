@@ -57,11 +57,13 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         self._opset_imports: dict[str, int] = {}
         self._model_dir: pathlib.Path | None = None
         self._root_graph: ir.Graph | None = None
+        self._model: ir.Model | None = None
 
     def check_model(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
         self._ir_version = model.ir_version
         self._opset_imports = dict(model.opset_imports)
         self._root_graph = model.graph
+        self._model = model
 
         # ONNX012: invalid-ir-version
         if model.ir_version is None or model.ir_version < 1:
@@ -114,7 +116,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         # ONNX001: empty-graph-name
         if not graph.name:
             yield _emit(
-                _rule("ONNX001"), "graph", graph,
+                _rule("ONNX001"),
+                "graph",
+                graph,
                 fix=lambda: setattr(graph, "name", "main_graph"),
             )
 
@@ -179,7 +183,12 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         # ONNX003: empty-initializer-name
         for tensor in graph.initializers.values():
             if not tensor.name:
-                yield _emit(_rule("ONNX003"), "graph", graph)
+                yield _emit(
+                    _rule("ONNX003"),
+                    "graph",
+                    graph,
+                    fix=self._name_fix,
+                )
 
         # Collect known values for topological order check
         known_values: set[ir.Value] = set()
@@ -218,7 +227,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
 
         if not is_sorted:
             yield _emit(
-                _rule("ONNX004"), "graph", graph,
+                _rule("ONNX004"),
+                "graph",
+                graph,
                 fix=graph.sort,
             )
 
@@ -283,6 +294,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     "graph",
                     graph,
                     message=f"Graph output '{out.name}' is produced in a different graph.",
+                    fix=self._output_fix,
                 )
 
         # ONNX011: initializer-name-conflict
@@ -341,7 +353,12 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
     def check_value(self, value: ir.Value) -> onnx_doctor.DiagnosticsMessageIterator:
         # ONNX102: empty-value-name
         if not value.name:
-            yield _emit(_rule("ONNX102"), "node", value)
+            yield _emit(
+                _rule("ONNX102"),
+                "node",
+                value,
+                fix=self._name_fix,
+            )
 
         # ONNX020: missing-value-type
         if value.type is None:
@@ -502,7 +519,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
 
         if unsorted:
             yield _emit(
-                _rule("ONNX033"), "function", function,
+                _rule("ONNX033"),
+                "function",
+                function,
                 fix=function.sort,
             )
 
@@ -531,3 +550,19 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                             f"but model imports {domain}:{self._opset_imports[domain]}."
                         ),
                     )
+
+    def _name_fix(self) -> None:
+        """Apply NameFixPass to auto-name all values and nodes."""
+        if self._model is None:
+            return
+        from onnx_ir.passes.common import NameFixPass  # noqa: PLC0415
+
+        NameFixPass()(self._model)
+
+    def _output_fix(self) -> None:
+        """Apply OutputFixPass to insert Identity nodes for invalid outputs."""
+        if self._model is None:
+            return
+        from onnx_ir.passes.common import OutputFixPass  # noqa: PLC0415
+
+        OutputFixPass()(self._model)

@@ -221,7 +221,9 @@ class FixTest(unittest.TestCase):
         messages = _diagnose(model)
         for msg in messages:
             if msg.rule and msg.rule.fixable:
-                self.assertIsNotNone(msg.fix, f"{msg.error_code} is fixable but has no fix")
+                self.assertIsNotNone(
+                    msg.fix, f"{msg.error_code} is fixable but has no fix"
+                )
 
 
 if __name__ == "__main__":

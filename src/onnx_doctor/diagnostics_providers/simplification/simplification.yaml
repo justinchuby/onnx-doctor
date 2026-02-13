@@ -1,0 +1,40 @@
+rules:
+  model:
+    - code: SIM001
+      name: unused-functions
+      category: spec
+      severity: info
+      fixable: true
+      message: Model contains functions that are not referenced by any node.
+      suggestion: Remove unused functions with `--fix` or `RemoveUnusedFunctionsPass`.
+      explanation: |
+        ## Details
+        Functions defined in the model that are not called by any node in the
+        graph or other functions are dead code. Removing them reduces model
+        size and improves clarity.
+
+    - code: SIM002
+      name: unused-opset-imports
+      category: spec
+      severity: info
+      fixable: true
+      message: Model imports opsets that are not used by any node.
+      suggestion: Remove unused opset imports with `--fix` or `RemoveUnusedOpsetsPass`.
+      explanation: |
+        ## Details
+        Opset imports that are not referenced by any node in the graph are
+        unnecessary. Removing them simplifies the model metadata.
+
+  graph:
+    - code: SIM003
+      name: unused-nodes
+      category: spec
+      severity: info
+      fixable: true
+      message: Graph contains nodes whose outputs are not consumed.
+      suggestion: Remove unused nodes with `--fix` or `RemoveUnusedNodesPass`.
+      explanation: |
+        ## Details
+        Nodes whose outputs are not consumed by any subsequent node or graph
+        output are dead code. Removing them reduces model size and may
+        improve inference performance.

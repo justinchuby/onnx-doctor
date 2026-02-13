@@ -86,7 +86,9 @@ class TextFormatter:
             summary.append(", ".join(parts), style="bold")
             summary.append(".", style="bold")
             if fixable:
-                summary.append(f"\n[*] {fixable} fixable with `--fix`.", style="bold green")
+                summary.append(
+                    f"\n[*] {fixable} fixable with `--fix`.", style="bold green"
+                )
             self._console.print(summary)
         else:
             self._console.print(Text("\nAll checks passed.", style="bold green"))

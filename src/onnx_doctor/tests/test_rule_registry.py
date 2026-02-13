@@ -143,15 +143,16 @@ class RuleRegistryTest(unittest.TestCase):
 class DefaultRegistryTest(unittest.TestCase):
     def test_loads_all_rules(self):
         registry = get_default_registry()
-        # 37 ONNX rules + 13 PB rules = 50
-        self.assertEqual(len(registry), 50)
+        # 37 ONNX rules + 13 PB rules + 3 SIM rules = 53
+        self.assertEqual(len(registry), 53)
 
-    def test_all_rules_have_onnx_or_pb_prefix(self):
+    def test_all_rules_have_valid_prefix(self):
         registry = get_default_registry()
+        valid_prefixes = ("ONNX", "PB", "SIM")
         for rule in registry.rules():
             self.assertTrue(
-                rule.code.startswith("ONNX") or rule.code.startswith("PB"),
-                f"Rule {rule.code} doesn't start with ONNX or PB",
+                any(rule.code.startswith(p) for p in valid_prefixes),
+                f"Rule {rule.code} doesn't start with a valid prefix {valid_prefixes}",
             )
 
     def test_all_rules_have_required_fields(self):

@@ -12,6 +12,7 @@ import onnx_doctor
 from onnx_doctor._formatter import GithubFormatter, JsonFormatter, TextFormatter
 from onnx_doctor._loader import get_default_registry
 from onnx_doctor.diagnostics_providers.onnx_spec import OnnxSpecProvider
+from onnx_doctor.diagnostics_providers.simplification import SimplificationProvider
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -126,18 +127,26 @@ def _filter_messages(
 def _apply_fixes(
     messages: Sequence[onnx_doctor.DiagnosticsMessage],
 ) -> int:
-    """Apply all available fixes. Returns the number of fixes applied."""
+    """Apply all available fixes. Returns the number of fixes applied.
+
+    Deduplicates fixes that share the same callable (e.g., multiple messages
+    that all trigger NameFixPass).
+    """
+    applied_fns: set[int] = set()
     applied = 0
     for msg in messages:
         if msg.fix is not None:
-            msg.fix()
+            fn_id = id(msg.fix)
+            if fn_id not in applied_fns:
+                msg.fix()
+                applied_fns.add(fn_id)
             applied += 1
     return applied
 
 
 def _get_providers() -> list[onnx_doctor.DiagnosticsProvider]:
     """Get the default set of providers."""
-    return [OnnxSpecProvider()]
+    return [OnnxSpecProvider(), SimplificationProvider()]
 
 
 def _cmd_check(args: argparse.Namespace) -> int:

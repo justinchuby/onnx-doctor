@@ -20,8 +20,9 @@ rules:
       name: empty-initializer-name
       category: spec
       severity: error
+      fixable: true
       message: Initializer name is empty.
-      suggestion: Set a name for the initializer tensor.
+      suggestion: Set a name for the initializer tensor, or apply `--fix` to auto-name all values with `NameFixPass`.
       explanation: |
         ## Details
         All initializers within a graph must have non-empty names.
@@ -80,8 +81,9 @@ rules:
       name: graph-output-not-produced
       category: spec
       severity: error
+      fixable: true
       message: Graph output is not produced by any node in the graph.
-      suggestion: Ensure the graph output is an output of a node within the graph, or a graph input.
+      suggestion: Ensure the graph output is an output of a node within the graph, or apply `--fix` to insert Identity nodes with `OutputFixPass`.
       explanation: |
         ## Details
         Every graph output must be produced by a node within the same graph,
@@ -160,8 +162,9 @@ rules:
       name: empty-value-name
       category: ir
       severity: warning
+      fixable: true
       message: Value has no name set.
-      suggestion: Assign a name to the value.
+      suggestion: Assign a name to the value, or apply `--fix` to auto-name all values with `NameFixPass`.
       explanation: |
         ## Details
         In onnx_ir, Value objects can exist without names, but names are

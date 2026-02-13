@@ -19,6 +19,12 @@ _PROTOBUF_YAML = (
     / "onnx_spec"
     / "protobuf.yaml"
 )
+_SIMPLIFICATION_YAML = (
+    pathlib.Path(__file__).parent
+    / "diagnostics_providers"
+    / "simplification"
+    / "simplification.yaml"
+)
 
 
 def load_rules_from_yaml(path: pathlib.Path) -> list[Rule]:
@@ -83,6 +89,8 @@ def build_default_registry() -> RuleRegistry:
     for rule in load_rules_from_yaml(_SPEC_YAML):
         registry.register(rule)
     for rule in load_rules_from_yaml(_PROTOBUF_YAML):
+        registry.register(rule)
+    for rule in load_rules_from_yaml(_SIMPLIFICATION_YAML):
         registry.register(rule)
     return registry
 
