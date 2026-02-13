@@ -66,6 +66,25 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Output path for the fixed model (default: overwrite the input file). Only used with --fix.",
     )
+    check_parser.add_argument(
+        "--diff",
+        action="store_true",
+        default=False,
+        help="Show a diff of what --fix would change without writing.",
+    )
+    check_parser.add_argument(
+        "--ort",
+        action="store_true",
+        default=False,
+        help="Enable ONNX Runtime compatibility checks (ORT rules).",
+    )
+    check_parser.add_argument(
+        "--ort-provider",
+        type=str,
+        default="CPUExecutionProvider",
+        help="Execution provider for ORT checks (default: CPUExecutionProvider).",
+    )
+
 
     # explain command
     explain_parser = subparsers.add_parser(
@@ -144,9 +163,24 @@ def _apply_fixes(
     return applied
 
 
-def _get_providers() -> list[onnx_doctor.DiagnosticsProvider]:
-    """Get the default set of providers."""
-    return [OnnxSpecProvider(), SimplificationProvider()]
+def _get_providers(args: argparse.Namespace) -> list[onnx_doctor.DiagnosticsProvider]:
+    """Get the set of providers based on CLI flags."""
+    providers: list[onnx_doctor.DiagnosticsProvider] = [
+        OnnxSpecProvider(),
+        SimplificationProvider(),
+    ]
+    if getattr(args, "ort", False):
+        from onnx_doctor.diagnostics_providers.onnxruntime_compatibility import (  # noqa: PLC0415
+            OnnxRuntimeCompatibilityLinter,
+        )
+
+        providers.append(
+            OnnxRuntimeCompatibilityLinter(
+                execution_provider=getattr(args, "ort_provider", "CPUExecutionProvider")
+            )
+        )
+
+    return providers
 
 
 def _cmd_check(args: argparse.Namespace) -> int:
@@ -161,7 +195,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
         return 1
 
     # Run diagnostics
-    providers = _get_providers()
+    providers = _get_providers(args)
     messages = onnx_doctor.diagnose(model, providers)
 
     # Filter
@@ -171,6 +205,29 @@ def _cmd_check(args: argparse.Namespace) -> int:
         ignore=args.ignore,
         min_severity=args.severity,
     )
+
+    # --diff: show what --fix would change without writing
+    if args.diff:
+        fixable = [m for m in filtered if m.fix is not None]
+        if not fixable:
+            print("No fixable issues found.", file=sys.stderr)
+        else:
+            before = str(model)
+            _apply_fixes(fixable)
+            after = str(model)
+            if before == after:
+                print("Fixes produced no visible changes.", file=sys.stderr)
+            else:
+                import difflib  # noqa: PLC0415
+
+                diff = difflib.unified_diff(
+                    before.splitlines(keepends=True),
+                    after.splitlines(keepends=True),
+                    fromfile=model_path,
+                    tofile=model_path + " (fixed)",
+                )
+                sys.stdout.writelines(diff)
+        return 0
 
     # Apply fixes if requested
     if args.fix:

@@ -20,6 +20,9 @@ onnx-doctor check model.onnx [options]
 | `--severity {error,warning,info}` | Minimum severity to report. |
 | `--fix` | Apply available auto-fixes and save the model. |
 | `-o, --output PATH` | Output path for the fixed model (default: overwrite input). Only used with `--fix`. |
+| `--diff` | Show a unified diff of what `--fix` would change, without writing. |
+| `--ort` | Enable ONNX Runtime compatibility checks (ORT rules). |
+| `--ort-provider NAME` | Execution provider for ORT checks (default: `CPUExecutionProvider`). |
 
 **Exit codes:** `0` = no errors (warnings may be present), `1` = errors found.
 
@@ -37,6 +40,15 @@ onnx-doctor check model.onnx --fix
 
 # Apply auto-fixes to a new file
 onnx-doctor check model.onnx --fix -o fixed_model.onnx
+
+# Preview what --fix would change
+onnx-doctor check model.onnx --diff
+
+# Enable ORT compatibility checks
+onnx-doctor check model.onnx --ort
+
+# ORT checks with a specific execution provider
+onnx-doctor check model.onnx --ort --ort-provider CUDAExecutionProvider
 
 # JSON output for CI
 onnx-doctor check model.onnx --output-format json

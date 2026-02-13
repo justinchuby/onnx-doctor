@@ -13,6 +13,7 @@ SP001 = Rule(
     default_severity="info",
     category="spec",
     target_type="tensor",
+    default_enabled=False,
     explanation="Reports the sparsity percentage of tensor data. High sparsity may indicate opportunities for optimization.",
     suggestion="Consider using sparse tensor representations for highly sparse tensors.",
 )

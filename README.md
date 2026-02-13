@@ -79,6 +79,9 @@ onnx-doctor check model.onnx [options]
 | `--severity {error,warning,info}` | Minimum severity to report. |
 | `--fix` | Apply available fixes and save the model. |
 | `-o, --output PATH` | Output path for the fixed model (default: overwrite input). Only used with `--fix`. |
+| `--diff` | Show a unified diff of what `--fix` would change, without writing. |
+| `--ort` | Enable ONNX Runtime compatibility checks (ORT rules). |
+| `--ort-provider NAME` | Execution provider for ORT checks (default: `CPUExecutionProvider`). |
 
 **Exit codes:** `0` = no errors (warnings may be present), `1` = errors found.
 
@@ -96,6 +99,12 @@ onnx-doctor check model.onnx --fix
 
 # Apply auto-fixes to a new file
 onnx-doctor check model.onnx --fix -o fixed_model.onnx
+
+# Preview what --fix would change
+onnx-doctor check model.onnx --diff
+
+# Enable ORT compatibility checks
+onnx-doctor check model.onnx --ort
 
 # JSON output for CI
 onnx-doctor check model.onnx --output-format json
@@ -155,14 +164,15 @@ onnx-doctor list-rules
 
 ## Rules
 
-ONNX Doctor ships with **49 built-in rules** across three providers:
+ONNX Doctor ships with **58 built-in rules** across five providers:
 
 | Prefix | Provider | Description |
 |--------|----------|-------------|
-| `ONNX` | ONNX Spec | 36 rules for ONNX spec compliance (graph, model, node, value, tensor, function) |
+| `ONNX` | ONNX Spec | 37 rules for ONNX spec compliance (graph, model, node, value, tensor, function) |
 | `PB` | Protobuf | 13 rules for protobuf-specific issues |
-| `ORT` | ORT Compatibility | ONNX Runtime compatibility checks |
-| `SP` | Sparsity | Tensor sparsity analysis |
+| `SIM` | Simplification | 3 rules for removing unused elements (functions, opsets, nodes) |
+| `ORT` | ORT Compatibility | 5 rules for ONNX Runtime compatibility checks (opt-in via `--ort`) |
+| `SP` | Sparsity | Tensor sparsity analysis (example provider, not enabled by default) |
 
 ## Writing Custom Providers
 

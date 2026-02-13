@@ -92,6 +92,19 @@ def build_default_registry() -> RuleRegistry:
         registry.register(rule)
     for rule in load_rules_from_yaml(_SIMPLIFICATION_YAML):
         registry.register(rule)
+
+    # Register rules defined in Python (ORT provider)
+    from onnx_doctor.diagnostics_providers.onnxruntime_compatibility import (  # noqa: PLC0415
+        ORT001,
+        ORT002,
+        ORT003,
+        ORT004,
+        ORT005,
+    )
+
+    for rule in (ORT001, ORT002, ORT003, ORT004, ORT005):
+        registry.register(rule)
+
     return registry
 
 

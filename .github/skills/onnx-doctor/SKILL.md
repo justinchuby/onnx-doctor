@@ -98,6 +98,7 @@ onnx-doctor check model.onnx                  # CLI
 - `Fix = Callable[[], None]` — a no-arg callable that mutates the IR in place. Stored on `DiagnosticsMessage.fix`.
 - Rules marked `fixable: true` in YAML should attach a `fix` callable via the `_emit()` helper.
 - CLI `--fix` applies all fixes, saves the model, then re-diagnoses to show remaining issues.
+- CLI `--diff` shows a unified diff of what `--fix` would change, without writing.
 - Fix deduplication: `_apply_fixes()` deduplicates by callable identity (`id(fix)`) to avoid running the same pass multiple times.
 
 ### Available IR Passes for Fixes
@@ -124,20 +125,21 @@ From `onnx_ir.passes.common` (all take `model: ir.Model`, return `PassResult`):
    )
    ```
 
-3. For model-level passes, store `self._model` and create a method:
+3. For model-level passes, use the module-level helper functions:
 
    ```python
-   def _name_fix(self) -> None:
-       if self._model is None:
-           return
-       from onnx_ir.passes.common import NameFixPass
-       NameFixPass()(self._model)
+   yield _emit(
+       _rule("ONNX003"), "graph", graph,
+       fix=lambda: _apply_name_fix(self._model),
+   )
    ```
 
 ## Provider Structure
 
-| Provider | Module | YAML | Rules |
-|----------|--------|------|-------|
-| `OnnxSpecProvider` | `diagnostics_providers/onnx_spec/` | `spec.yaml` | ONNX001–ONNX102 |
-| (protobuf rules) | `diagnostics_providers/onnx_spec/` | `protobuf.yaml` | PB001–PB013 |
-| `SimplificationProvider` | `diagnostics_providers/simplification/` | `simplification.yaml` | SIM001–SIM003 |
+| Provider | Module | Rules | Notes |
+|----------|--------|-------|-------|
+| `OnnxSpecProvider` | `diagnostics_providers/onnx_spec/` | ONNX001–ONNX102 (YAML) | Default, always enabled |
+| (protobuf rules) | `diagnostics_providers/onnx_spec/` | PB001–PB013 (YAML) | Registered but no Python checker yet |
+| `SimplificationProvider` | `diagnostics_providers/simplification/` | SIM001–SIM003 (YAML) | Default, always enabled |
+| `OnnxRuntimeCompatibilityLinter` | `diagnostics_providers/onnxruntime_compatibility/` | ORT001–ORT005 (Python) | Opt-in via `--ort` flag |
+| `SparsityAnalyzer` | `diagnostics_providers/sparsity.py` | SP001 (Python) | Example provider, not registered |
