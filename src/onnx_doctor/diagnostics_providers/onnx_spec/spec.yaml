@@ -15,29 +15,6 @@ rules:
         graph.name = 'main_graph'
         ```
 
-    - code: ONNX101
-      name: duplicate-graph-io
-      category: ir
-      severity: error
-      message: Duplicate Value objects in graph inputs or outputs.
-      suggestion: Remove the duplicate Value references from graph inputs/outputs.
-      explanation: |
-        ## Details
-        Each Value object in a graph's inputs and outputs must appear only once.
-        In onnx_ir, this checks object identity (not just name equality).
-
-        ## Example
-        ```python
-        # Remove duplicate outputs by identity
-        seen = set()
-        unique_outputs = []
-        for output in graph.outputs:
-            if id(output) not in seen:
-                seen.add(id(output))
-                unique_outputs.append(output)
-        graph.outputs[:] = unique_outputs
-        ```
-
     - code: ONNX003
       name: empty-initializer-name
       category: spec
@@ -97,18 +74,6 @@ rules:
         All value names within a graph must be unique to maintain SSA form
         and ensure unambiguous value references.
 
-    - code: ONNX102
-      name: empty-value-name
-      category: ir
-      severity: warning
-      message: Value has no name set.
-      suggestion: Assign a name to the value.
-      explanation: |
-        ## Details
-        In onnx_ir, Value objects can exist without names, but names are
-        required for serialization and debugging. Values without names may
-        cause issues during export.
-
     - code: ONNX009
       name: graph-output-not-produced
       category: spec
@@ -153,8 +118,53 @@ rules:
         ## Details
         Per the ONNX specification, graph inputs and outputs must have type
         information. Runtimes use these types to allocate memory, validate
-        feeds, and verify output shapes. Unlike intermediate values, graph
-        I/O types are mandatory.
+        feeds, and verify output shapes.
+
+    - code: ONNX037
+      name: graph-io-missing-shape
+      category: spec
+      severity: error
+      message: Graph input or output is missing shape information.
+      suggestion: Set the shape on all graph inputs and outputs, e.g. `value.shape = ir.Shape([1, 3])`.
+      explanation: |
+        ## Details
+        Per the ONNX specification, graph inputs and outputs must have shape
+        information. Runtimes use shapes to allocate memory and validate feeds.
+
+    - code: ONNX101
+      name: duplicate-graph-io
+      category: ir
+      severity: error
+      message: Duplicate Value objects in graph inputs or outputs.
+      suggestion: Remove the duplicate Value references from graph inputs/outputs.
+      explanation: |
+        ## Details
+        Each Value object in a graph's inputs and outputs must appear only once.
+        In onnx_ir, this checks object identity (not just name equality).
+
+        ## Example
+        ```python
+        # Remove duplicate outputs by identity
+        seen = set()
+        unique_outputs = []
+        for output in graph.outputs:
+            if id(output) not in seen:
+                seen.add(id(output))
+                unique_outputs.append(output)
+        graph.outputs[:] = unique_outputs
+        ```
+
+    - code: ONNX102
+      name: empty-value-name
+      category: ir
+      severity: warning
+      message: Value has no name set.
+      suggestion: Assign a name to the value.
+      explanation: |
+        ## Details
+        In onnx_ir, Value objects can exist without names, but names are
+        required for serialization and debugging. Values without names may
+        cause issues during export.
 
   model:
     - code: ONNX012

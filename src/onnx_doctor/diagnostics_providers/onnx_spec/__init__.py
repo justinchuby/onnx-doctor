@@ -115,18 +115,28 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         if not graph.name:
             yield _emit(_rule("ONNX001"), "graph", graph)
 
-        # ONNX036: graph-io-missing-type
+        # ONNX036: graph-io-missing-type / ONNX037: graph-io-missing-shape
         for value in graph.inputs:
             if value.type is None:
                 yield _emit(
                     _rule("ONNX036"), "graph", graph,
                     message=f"Graph input '{value.name}' is missing type information.",
                 )
+            elif value.shape is None:
+                yield _emit(
+                    _rule("ONNX037"), "graph", graph,
+                    message=f"Graph input '{value.name}' is missing shape information.",
+                )
         for value in graph.outputs:
             if value.type is None:
                 yield _emit(
                     _rule("ONNX036"), "graph", graph,
                     message=f"Graph output '{value.name}' is missing type information.",
+                )
+            elif value.shape is None:
+                yield _emit(
+                    _rule("ONNX037"), "graph", graph,
+                    message=f"Graph output '{value.name}' is missing shape information.",
                 )
 
         # ONNX101: duplicate-graph-io
