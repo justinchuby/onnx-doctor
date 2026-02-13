@@ -50,7 +50,7 @@ def diagnose_graph(
         yield from diagnostics_provider.check_graph(graph)
     for value in graph.inputs:
         yield from diagnose_value(value, diagnostics_providers)
-    for node in graph.nodes:
+    for node in graph:
         yield from diagnose_node(node, diagnostics_providers)
     for initializer in graph.initializers.values():
         yield from diagnose_tensor(initializer, diagnostics_providers)
@@ -64,7 +64,7 @@ def diagnose_function(
         yield from diagnostics_provider.check_function(function)
     for value in function.inputs:
         yield from diagnose_value(value, diagnostics_providers)
-    for node in function.nodes:
+    for node in function:
         yield from diagnose_node(node, diagnostics_providers)
     # for value in function.outputs:
     #     yield from diagnose_value(value, diagnostics_providers)

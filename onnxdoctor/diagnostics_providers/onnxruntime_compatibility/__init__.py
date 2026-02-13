@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import collections
 import dataclasses
+import json
+import pathlib
 
 from onnxscript import ir
 
 import onnxdoctor
-
-from . import _support_table
 
 _SPECIAL_OPS_TO_SKIP = {
     ("", "Constant"),
@@ -61,7 +61,12 @@ class OnnxRuntimeCompatibilityLinter(onnxdoctor.DiagnosticsProvider):
     def __init__(self, execution_provider: str = "CPUExecutionProvider"):
         self.execution_provider = execution_provider
         self.ir_version = None
-        self.support_table = _get_op_support_table(_support_table.TABLE)
+        with open(
+            pathlib.Path(__file__).parent / "ort_supported_schemas.json",
+            encoding="utf-8",
+        ) as f:
+            support_table = json.load(f)
+        self.support_table = _get_op_support_table(support_table)
         self.opset_imports = {}
         self.imported_functions = set()
 
