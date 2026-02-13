@@ -26,7 +26,6 @@ PossibleTargets = Union[
     ir.Tensor,
     ir.Value,
     ir.Function,
-    ir.ReferenceAttribute,
 ]
 
 PossibleSeverities = Literal[

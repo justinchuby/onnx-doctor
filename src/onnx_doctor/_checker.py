@@ -37,8 +37,6 @@ def diagnose(  # noqa: PLR0911
         return list(diagnose_value(ir_object, diagnostics_providers))
     if isinstance(ir_object, ir.Attr):
         return list(diagnose_attribute(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.ReferenceAttribute):
-        return list(diagnose_attribute(ir_object, diagnostics_providers))
     raise TypeError(f"Unknown IR object: {ir_object}")
 
 

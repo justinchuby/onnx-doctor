@@ -237,7 +237,7 @@ def _assign_id_to_node_proto(
         _assign_id_to_value_info_proto(value_info_protos[output_name], output)
     for attr_proto in node_proto.attribute:
         attr = node.attributes[attr_proto.name]
-        if isinstance(attr, ir.ReferenceAttribute):
+        if attr.is_ref():
             continue
         _assign_id_to_attribute_proto(attr_proto, attr)
 
@@ -393,7 +393,7 @@ def _capture_node(
     for output in node.outputs:
         _capture_value(snapshot, output, assign_id=assign_id)
     for attr in node.attributes.values():
-        if isinstance(attr, ir.ReferenceAttribute):
+        if attr.is_ref():
             _capture_reference_attribute(snapshot, attr, assign_id=assign_id)
         else:
             _capture_attribute(snapshot, attr, assign_id=assign_id)
@@ -442,7 +442,7 @@ def _capture_attribute(
 
 def _capture_reference_attribute(
     snapshot: Snapshot,
-    ref_attr: ir.ReferenceAttribute,
+    ref_attr: ir.Attr,
     *,
     assign_id: bool = False,
 ):
