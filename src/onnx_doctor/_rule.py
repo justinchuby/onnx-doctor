@@ -37,3 +37,4 @@ class Rule:
     explanation: str = ""
     suggestion: str = ""
     fixable: bool = False
+    default_enabled: bool = True

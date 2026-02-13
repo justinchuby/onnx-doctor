@@ -53,6 +53,7 @@ def _parse_rule(data: dict[str, Any], target_type: str) -> Rule:
         explanation=data.get("explanation", ""),
         suggestion=data.get("suggestion", ""),
         fixable=data.get("fixable", False),
+        default_enabled=data.get("default_enabled", True),
     )
 
 

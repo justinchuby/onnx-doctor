@@ -75,8 +75,8 @@ class OnnxSpecProviderNodeTest(unittest.TestCase):
 
 
 class OnnxSpecProviderValueTest(unittest.TestCase):
-    def test_missing_value_type(self):
-        # Create a graph with a value that has no type
+    def test_missing_value_type_emitted(self):
+        # ONNX020 is still emitted by the provider (filtering is CLI-level)
         graph = ir.Graph([], [], nodes=[], name="test")
         v = ir.Value(name="untyped")
         graph._inputs = [v]
@@ -85,6 +85,17 @@ class OnnxSpecProviderValueTest(unittest.TestCase):
         model.opset_imports[""] = 21
         messages = _diagnose(model)
         self.assertIn("ONNX020", _codes(messages))
+
+    def test_graph_io_missing_type(self):
+        # ONNX036: graph inputs/outputs must have type info
+        graph = ir.Graph([], [], nodes=[], name="test")
+        v = ir.Value(name="untyped")
+        graph._inputs = [v]
+        graph._outputs = [v]
+        model = ir.Model(graph, ir_version=10)
+        model.opset_imports[""] = 21
+        messages = _diagnose(model)
+        self.assertIn("ONNX036", _codes(messages))
 
 
 class LocationTrackingTest(unittest.TestCase):

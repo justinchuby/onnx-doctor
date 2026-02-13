@@ -77,14 +77,27 @@ def _filter_messages(
     ignore: list[str] | None,
     min_severity: str | None,
 ) -> list[onnx_doctor.DiagnosticsMessage]:
-    """Filter messages by select/ignore codes and minimum severity."""
+    """Filter messages by select/ignore codes and minimum severity.
+
+    Rules with ``default_enabled=False`` are excluded unless explicitly
+    listed in *select*.
+    """
     filtered = list(messages)
 
+    # Exclude rules that are off by default, unless explicitly selected
     if select is not None:
+        # When --select is used, show only selected rules (enabled or not)
         filtered = [
             m
             for m in filtered
             if any(m.error_code == s or m.error_code.startswith(s) for s in select)
+        ]
+    else:
+        # No --select: exclude default-disabled rules
+        filtered = [
+            m
+            for m in filtered
+            if m.rule is None or m.rule.default_enabled
         ]
 
     if ignore is not None:

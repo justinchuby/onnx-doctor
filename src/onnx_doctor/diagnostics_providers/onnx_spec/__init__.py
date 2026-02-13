@@ -115,6 +115,20 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         if not graph.name:
             yield _emit(_rule("ONNX001"), "graph", graph)
 
+        # ONNX036: graph-io-missing-type
+        for value in graph.inputs:
+            if value.type is None:
+                yield _emit(
+                    _rule("ONNX036"), "graph", graph,
+                    message=f"Graph input '{value.name}' is missing type information.",
+                )
+        for value in graph.outputs:
+            if value.type is None:
+                yield _emit(
+                    _rule("ONNX036"), "graph", graph,
+                    message=f"Graph output '{value.name}' is missing type information.",
+                )
+
         # ONNX101: duplicate-graph-io
         seen_ids: set[int] = set()
         for value in graph.inputs:

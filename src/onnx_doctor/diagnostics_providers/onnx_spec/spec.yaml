@@ -143,6 +143,19 @@ rules:
         An initializer cannot share its name with a subgraph input, as this
         creates ambiguity in value resolution.
 
+    - code: ONNX036
+      name: graph-io-missing-type
+      category: spec
+      severity: error
+      message: Graph input or output is missing type information.
+      suggestion: Set the type on all graph inputs and outputs, e.g. `value.type = ir.TensorType(ir.DataType.FLOAT)`.
+      explanation: |
+        ## Details
+        Per the ONNX specification, graph inputs and outputs must have type
+        information. Runtimes use these types to allocate memory, validate
+        feeds, and verify output shapes. Unlike intermediate values, graph
+        I/O types are mandatory.
+
   model:
     - code: ONNX012
       name: invalid-ir-version
@@ -237,13 +250,17 @@ rules:
     - code: ONNX020
       name: missing-value-type
       category: spec
-      severity: warning
+      severity: info
+      default_enabled: false
       message: Value has no type annotation.
-      suggestion: Set the type of the value, e.g. `value.type = ir.TensorType(ir.DataType.FLOAT)`.
+      suggestion: Run shape inference or set the type manually, e.g. `value.type = ir.TensorType(ir.DataType.FLOAT)`.
       explanation: |
         ## Details
         Values should have type annotations for shape inference and runtime
-        compatibility checks. Missing types may cause issues with downstream tools.
+        compatibility checks. Missing types on intermediate values may cause
+        issues with downstream tools. This rule is off by default because
+        intermediate values commonly lack type info before shape inference.
+        Use `--select ONNX020` to enable it.
 
     - code: ONNX021
       name: undefined-value-dtype

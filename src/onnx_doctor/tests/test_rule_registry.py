@@ -143,8 +143,8 @@ class RuleRegistryTest(unittest.TestCase):
 class DefaultRegistryTest(unittest.TestCase):
     def test_loads_all_rules(self):
         registry = get_default_registry()
-        # 35 ONNX rules + 13 PB rules = 48
-        self.assertEqual(len(registry), 48)
+        # 36 ONNX rules + 13 PB rules = 49
+        self.assertEqual(len(registry), 49)
 
     def test_all_rules_have_onnx_or_pb_prefix(self):
         registry = get_default_registry()
