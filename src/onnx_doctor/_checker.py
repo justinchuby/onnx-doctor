@@ -54,6 +54,9 @@ def diagnose_model(
             func, diagnostics_providers, _location=f"function({func_id})"
         )
     yield from diagnose_graph(model.graph, diagnostics_providers, _location="graph")
+    # Whole-model analysis passes (run after the tree walk)
+    for diagnostics_provider in diagnostics_providers:
+        yield from diagnostics_provider.analyze_model(model)
 
 
 def diagnose_graph(

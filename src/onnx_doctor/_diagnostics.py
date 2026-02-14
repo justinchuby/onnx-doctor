@@ -17,6 +17,18 @@ DiagnosticsMessageIterator: TypeAlias = Union[
 
 
 class DiagnosticsProvider:
+    def analyze_model(self, model: ir.Model) -> DiagnosticsMessageIterator:
+        """Run whole-model analysis.
+
+        Unlike ``check_model``, which is dispatched as part of the per-element
+        tree walk, this method is called once after the walk completes and is
+        intended for cross-scope or structural analyses (e.g. variable
+        shadowing across nested subgraphs).
+        """
+        del model
+        return
+        yield
+
     def check_model(self, model: ir.Model) -> DiagnosticsMessageIterator:
         del model
         return

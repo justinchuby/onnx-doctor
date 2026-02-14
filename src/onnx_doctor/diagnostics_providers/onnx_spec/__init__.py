@@ -560,6 +560,72 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                         ),
                     )
 
+    def analyze_model(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
+        # ONNX040: subgraph-variable-shadowing
+        yield from self._check_shadowing(model.graph, frozenset())
+        for func in model.functions.values():
+            func_names = _collect_scope_names_function(func)
+            for node in func:
+                for attr in node.attributes.values():
+                    if attr.type == ir.AttributeType.GRAPH:
+                        yield from self._check_shadowing(attr.value, func_names)
+                    elif attr.type == ir.AttributeType.GRAPHS:
+                        for subgraph in attr.value:
+                            yield from self._check_shadowing(subgraph, func_names)
+
+    def _check_shadowing(
+        self,
+        graph: ir.Graph,
+        outer_names: frozenset[str],
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Recursively check that subgraph names don't shadow outer scope names."""
+        local_names = _collect_scope_names_graph(graph)
+        shadowed = local_names & outer_names
+        for name in sorted(shadowed):
+            yield _emit(
+                _rule("ONNX040"),
+                "graph",
+                graph,
+                message=f"Subgraph value name '{name}' shadows a name from an outer scope.",
+            )
+        visible = outer_names | local_names
+        for node in graph:
+            for attr in node.attributes.values():
+                if attr.type == ir.AttributeType.GRAPH:
+                    yield from self._check_shadowing(attr.value, visible)
+                elif attr.type == ir.AttributeType.GRAPHS:
+                    for subgraph in attr.value:
+                        yield from self._check_shadowing(subgraph, visible)
+
+
+def _collect_scope_names_graph(graph: ir.Graph) -> frozenset[str]:
+    """Collect all value names defined in a graph scope."""
+    names: set[str] = set()
+    for v in graph.inputs:
+        if v.name:
+            names.add(v.name)
+    for name in graph.initializers:
+        if name:
+            names.add(name)
+    for node in graph:
+        for v in node.outputs:
+            if v.name:
+                names.add(v.name)
+    return frozenset(names)
+
+
+def _collect_scope_names_function(func: ir.Function) -> frozenset[str]:
+    """Collect all value names defined in a function scope."""
+    names: set[str] = set()
+    for v in func.inputs:
+        if v.name:
+            names.add(v.name)
+    for node in func:
+        for v in node.outputs:
+            if v.name:
+                names.add(v.name)
+    return frozenset(names)
+
 
 def _apply_name_fix(model: ir.Model) -> None:
     """Apply NameFixPass to auto-name all values and nodes."""

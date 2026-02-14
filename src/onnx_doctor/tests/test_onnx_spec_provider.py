@@ -315,5 +315,105 @@ class FixTest(unittest.TestCase):
         self.assertEqual(onnx009_codes, [], f"Unexpected ONNX009: {onnx009_codes}")
 
 
+class SubgraphShadowingTest(unittest.TestCase):
+    def test_subgraph_shadowing_detected(self):
+        """Subgraph that redefines a name from the outer graph triggers ONNX040."""
+        x = ir.Value(
+            name="X", type=ir.TensorType(ir.DataType.FLOAT), shape=ir.Shape([1])
+        )
+        cond = ir.Value(
+            name="cond", type=ir.TensorType(ir.DataType.BOOL), shape=ir.Shape([])
+        )
+        relu = ir.Node("", "Relu", inputs=[x], name="relu")
+        relu_out = relu.outputs[0]
+        relu_out.name = "relu_out"
+
+        # Subgraph reuses name "X" — this shadows the outer graph input
+        sub_x = ir.Value(name="X")
+        sub_relu = ir.Node("", "Relu", inputs=[sub_x], name="sub_relu")
+        sub_out = sub_relu.outputs[0]
+        sub_out.name = "sub_out"
+
+        subgraph = ir.Graph(
+            inputs=[sub_x],
+            outputs=[sub_out],
+            nodes=[sub_relu],
+            name="then_branch",
+            opset_imports={"": 21},
+        )
+
+        if_node = ir.Node(
+            "",
+            "If",
+            inputs=[cond],
+            attributes=[ir.Attr("then_branch", ir.AttributeType.GRAPH, subgraph)],
+            name="if_node",
+        )
+        if_out = if_node.outputs[0]
+        if_out.name = "Y"
+        if_out.type = ir.TensorType(ir.DataType.FLOAT)
+        if_out.shape = ir.Shape([1])
+
+        graph = ir.Graph(
+            inputs=[x, cond],
+            outputs=[if_out],
+            nodes=[relu, if_node],
+            name="main",
+            opset_imports={"": 21},
+        )
+        model = ir.Model(graph, ir_version=9)
+        messages = _diagnose(model)
+        self.assertIn("ONNX040", _codes(messages))
+
+    def test_no_shadowing_no_onnx040(self):
+        """Subgraph with unique names should not trigger ONNX040."""
+        x = ir.Value(
+            name="X", type=ir.TensorType(ir.DataType.FLOAT), shape=ir.Shape([1])
+        )
+        cond = ir.Value(
+            name="cond", type=ir.TensorType(ir.DataType.BOOL), shape=ir.Shape([])
+        )
+        relu = ir.Node("", "Relu", inputs=[x], name="relu")
+        relu_out = relu.outputs[0]
+        relu_out.name = "relu_out"
+
+        # Subgraph uses distinct name "Z" — no shadowing
+        sub_z = ir.Value(name="Z")
+        sub_relu = ir.Node("", "Relu", inputs=[sub_z], name="sub_relu")
+        sub_out = sub_relu.outputs[0]
+        sub_out.name = "sub_out"
+
+        subgraph = ir.Graph(
+            inputs=[sub_z],
+            outputs=[sub_out],
+            nodes=[sub_relu],
+            name="then_branch",
+            opset_imports={"": 21},
+        )
+
+        if_node = ir.Node(
+            "",
+            "If",
+            inputs=[cond],
+            attributes=[ir.Attr("then_branch", ir.AttributeType.GRAPH, subgraph)],
+            name="if_node",
+        )
+        if_out = if_node.outputs[0]
+        if_out.name = "Y"
+        if_out.type = ir.TensorType(ir.DataType.FLOAT)
+        if_out.shape = ir.Shape([1])
+
+        graph = ir.Graph(
+            inputs=[x, cond],
+            outputs=[if_out],
+            nodes=[relu, if_node],
+            name="main",
+            opset_imports={"": 21},
+        )
+        model = ir.Model(graph, ir_version=9)
+        messages = _diagnose(model)
+        self.assertNotIn("ONNX040", _codes(messages))
+
+
 if __name__ == "__main__":
     unittest.main()

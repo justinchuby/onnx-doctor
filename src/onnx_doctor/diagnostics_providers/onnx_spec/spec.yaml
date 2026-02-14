@@ -145,6 +145,17 @@ rules:
         Runtimes use shapes to allocate memory. Running shape inference can
         often resolve this automatically.
 
+    - code: ONNX040
+      name: subgraph-variable-shadowing
+      category: spec
+      severity: error
+      message: Subgraph value name shadows a name from an outer scope.
+      suggestion: Rename the value in the subgraph to avoid shadowing.
+      explanation: |
+        The ONNX spec requires that node output names and names of inputs
+        and initializers of a subgraph are distinct from names visible in
+        outer scopes.  Variable shadowing is not allowed.
+
     - code: ONNX101
       name: duplicate-graph-input
       category: ir
