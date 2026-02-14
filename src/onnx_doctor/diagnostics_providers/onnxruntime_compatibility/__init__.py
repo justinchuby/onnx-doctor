@@ -128,12 +128,12 @@ class OnnxRuntimeCompatibilityLinter(onnx_doctor.DiagnosticsProvider):
         imported_functions = set(model.functions)
 
         # Check all nodes in the main graph (including subgraphs)
-        for node in ir.traversal.RecursiveGraphIterator(model.graph):
+        for node in model.graph.all_nodes():
             yield from self._check_node(node, opset_imports, imported_functions)
 
-        # Check nodes in functions
+        # Check nodes in functions (including subgraphs in node attributes)
         for func in model.functions.values():
-            for node in func:
+            for node in func.all_nodes():
                 yield from self._check_node(node, opset_imports, imported_functions)
 
     def _check_node(

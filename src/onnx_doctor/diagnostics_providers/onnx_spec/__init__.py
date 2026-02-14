@@ -64,17 +64,50 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         # Check all functions
         for func in model.functions.values():
             yield from self._check_function(func, ir_version, opset_imports)
-            # Check nodes/values inside functions
-            for node in func:
-                yield from self._check_node(node, opset_imports)
-                for out in node.outputs:
-                    yield from self._check_value(out, model)
+            yield from self._check_function_contents(func, model, opset_imports)
 
         # Check main graph (root graph)
         yield from self._check_graph(model.graph, model, opset_imports, is_root=True)
 
         # Whole-model shadowing analysis
         yield from self._analyze_shadowing(model)
+
+    def _check_function_contents(
+        self,
+        func: ir.Function,
+        model: ir.Model,
+        opset_imports: dict[str, int],
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check values, nodes, and attributes inside a function.
+
+        Mirrors the graph traversal to ensure function contents get the same
+        checks as graph contents (ONNX020/ONNX103 for values, ONNX022-ONNX027
+        for tensors, and recursive subgraph checks).
+        """
+        # Check function inputs
+        for value in func.inputs:
+            yield from self._check_value(value, model)
+
+        # Check function outputs
+        for value in func.outputs:
+            yield from self._check_value(value, model)
+
+        # Check nodes and their outputs/attributes
+        for node in func:
+            yield from self._check_node(node, opset_imports)
+            for out in node.outputs:
+                yield from self._check_value(out, model)
+            for attr in node.attributes.values():
+                if attr.type == ir.AttributeType.TENSOR:
+                    yield from self._check_tensor(attr.value, node)
+                elif attr.type == ir.AttributeType.TENSORS:
+                    for tensor in attr.value:
+                        yield from self._check_tensor(tensor, node)
+                elif attr.type == ir.AttributeType.GRAPH:
+                    yield from self._check_graph(attr.value, model, opset_imports)
+                elif attr.type == ir.AttributeType.GRAPHS:
+                    for subgraph in attr.value:
+                        yield from self._check_graph(subgraph, model, opset_imports)
 
     def _check_model(
         self,
