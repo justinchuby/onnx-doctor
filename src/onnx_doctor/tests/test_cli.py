@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 import unittest
 
 
@@ -56,8 +57,6 @@ class CLITest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
 
     def test_check_empty_directory(self):
-        import tempfile  # noqa: PLC0415
-
         with tempfile.TemporaryDirectory() as tmpdir:
             result = self._run("check", tmpdir)
             self.assertNotEqual(result.returncode, 0)
