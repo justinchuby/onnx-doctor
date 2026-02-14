@@ -412,10 +412,17 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
     ) -> onnx_doctor.DiagnosticsMessageIterator:
         """Check a single value."""
         # ONNX103: empty-value-name
-        if not value.name:
+        # Only check if value has consumers OR is a graph input/output/initializer
+        needs_name = (
+            value.uses()
+            or value.is_graph_input()
+            or value.is_graph_output()
+            or value.is_initializer()
+        )
+        if not value.name and needs_name:
             yield _emit(
                 _rule("ONNX103"),
-                "node",
+                "value",
                 value,
                 fix=lambda: _apply_name_fix(model),
             )
