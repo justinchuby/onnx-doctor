@@ -6,7 +6,6 @@ import argparse
 import logging
 import os
 import sys
-import traceback
 from collections.abc import Sequence
 
 import onnx_ir as ir
@@ -279,15 +278,39 @@ def _check_single(
     try:
         model = ir.load(model_path)
     except Exception as e:
-        print(f"Error loading model '{model_path}': {e}", file=sys.stderr)
-        return 1, []
+        logger.exception("Failed to load model '%s'", model_path)
+        dummy_model = ir.Model(ir.Graph([], [], nodes=[]), ir_version=0)
+        error_msg = onnx_doctor.DiagnosticsMessage(
+            target_type="model",
+            target=dummy_model,
+            message=f"Failed to load model: {e}",
+            severity="error",
+            producer="onnx-doctor",
+            error_code="OD002",
+            location="model",
+        )
+        filtered = _filter_messages(
+            [error_msg],
+            select=args.select,
+            ignore=args.ignore,
+            min_severity=args.severity,
+        )
+        if args.output_format == "json":
+            JsonFormatter(file_path=model_path).format(filtered)
+        elif args.output_format == "github":
+            GithubFormatter(file_path=model_path).format(filtered)
+        else:
+            TextFormatter(file_path=model_path).format(
+                filtered, show_summary=show_summary
+            )
+        return 1, filtered
 
     # Run diagnostics
     providers = _get_providers(args)
     try:
         messages = list(onnx_doctor.diagnose(model, providers))
     except Exception as e:
-        logger.debug("Diagnostics provider error:\n%s", traceback.format_exc())
+        logger.exception("Diagnostics provider error")
         messages = [
             onnx_doctor.DiagnosticsMessage(
                 target_type="model",
@@ -346,10 +369,7 @@ def _check_single(
             try:
                 messages = list(onnx_doctor.diagnose(model, providers))
             except Exception as e:
-                logger.debug(
-                    "Diagnostics provider error after fix:\n%s",
-                    traceback.format_exc(),
-                )
+                logger.exception("Diagnostics provider error after fix")
                 messages = [
                     onnx_doctor.DiagnosticsMessage(
                         target_type="model",
