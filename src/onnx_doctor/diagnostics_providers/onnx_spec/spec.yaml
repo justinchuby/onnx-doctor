@@ -15,7 +15,7 @@ rules:
         model.graph.name = 'main_graph'
         ```
 
-    - code: ONNX003
+    - code: ONNX002
       name: empty-initializer-name
       category: spec
       severity: error
@@ -25,7 +25,7 @@ rules:
       explanation: |
         All initializers within a graph must have non-empty names.
 
-    - code: ONNX004
+    - code: ONNX003
       name: unsorted-graph-nodes
       category: spec
       severity: error
@@ -41,7 +41,7 @@ rules:
         graph.sort()
         ```
 
-    - code: ONNX005
+    - code: ONNX004
       name: unknown-node-input
       category: spec
       severity: error
@@ -51,7 +51,7 @@ rules:
         Every input to a node must either be a graph input, an initializer,
         or the output of a node that appears earlier in the graph.
 
-    - code: ONNX006
+    - code: ONNX005
       name: experimental-op
       category: spec
       severity: warning
@@ -61,7 +61,7 @@ rules:
         Experimental operators may change or be removed in future ONNX versions.
         Avoid using them in production models.
 
-    - code: ONNX007
+    - code: ONNX006
       name: duplicate-value-name
       category: spec
       severity: error
@@ -71,7 +71,7 @@ rules:
         All value names within a graph must be unique to maintain SSA form
         and ensure unambiguous value references.
 
-    - code: ONNX009
+    - code: ONNX007
       name: graph-output-not-produced
       category: spec
       severity: error
@@ -82,7 +82,7 @@ rules:
         Every graph output must be produced by a node within the same graph,
         or be a graph input that passes through.
 
-    - code: ONNX010
+    - code: ONNX008
       name: graph-ssa-violation
       category: spec
       severity: error
@@ -93,7 +93,7 @@ rules:
         value name is assigned exactly once. Multiple assignments to the same
         name violate this invariant.
 
-    - code: ONNX011
+    - code: ONNX009
       name: initializer-name-conflict
       category: spec
       severity: error
@@ -103,7 +103,7 @@ rules:
         An initializer cannot share its name with a subgraph input, as this
         creates ambiguity in value resolution.
 
-    - code: ONNX036
+    - code: ONNX034
       name: graph-input-missing-type
       category: spec
       severity: error
@@ -113,7 +113,7 @@ rules:
         Per the ONNX specification, graph inputs must have type information.
         Runtimes use these types to allocate memory and validate feeds.
 
-    - code: ONNX037
+    - code: ONNX035
       name: graph-input-missing-shape
       category: spec
       severity: error
@@ -123,7 +123,7 @@ rules:
         Per the ONNX specification, graph inputs must have shape information.
         Runtimes use shapes to allocate memory and validate feeds.
 
-    - code: ONNX038
+    - code: ONNX036
       name: graph-output-missing-type
       category: spec
       severity: error
@@ -134,7 +134,7 @@ rules:
         Runtimes use these types to validate output shapes. Running shape
         inference can often resolve this automatically.
 
-    - code: ONNX039
+    - code: ONNX037
       name: graph-output-missing-shape
       category: spec
       severity: error
@@ -145,7 +145,7 @@ rules:
         Runtimes use shapes to allocate memory. Running shape inference can
         often resolve this automatically.
 
-    - code: ONNX040
+    - code: ONNX038
       name: subgraph-variable-shadowing
       category: spec
       severity: error
@@ -156,7 +156,7 @@ rules:
         and initializers of a subgraph are distinct from names visible in
         outer scopes.  Variable shadowing is not allowed.
 
-    - code: ONNX041
+    - code: ONNX039
       name: ref-attr-outside-function
       category: spec
       severity: error
@@ -227,7 +227,7 @@ rules:
         cannot be serialized and indicates a malformed IR.
 
   model:
-    - code: ONNX012
+    - code: ONNX010
       name: invalid-ir-version
       category: spec
       severity: error
@@ -237,7 +237,7 @@ rules:
         Every ONNX model must have a valid ir_version set. This field indicates
         the version of the ONNX IR specification the model conforms to.
 
-    - code: ONNX013
+    - code: ONNX011
       name: ir-version-too-new
       category: spec
       severity: warning
@@ -247,7 +247,7 @@ rules:
         The model's ir_version is higher than what this version of the checker
         recognizes. Some validations may not be accurate.
 
-    - code: ONNX014
+    - code: ONNX012
       name: duplicate-metadata-keys
       category: spec
       severity: error
@@ -256,7 +256,7 @@ rules:
       explanation: |
         The metadata_props field of a model must not contain duplicate keys.
 
-    - code: ONNX015
+    - code: ONNX013
       name: missing-default-opset
       category: spec
       severity: error
@@ -266,7 +266,7 @@ rules:
         Models with IR version 3 or higher must include an opset_import for
         the default ONNX domain ("").
 
-    - code: ONNX016
+    - code: ONNX014
       name: unexpected-opset-import
       category: spec
       severity: error
@@ -276,7 +276,7 @@ rules:
         Models with IR version less than 3 do not support opset_import.
 
   node:
-    - code: ONNX017
+    - code: ONNX015
       name: missing-opset-for-domain
       category: spec
       severity: error
@@ -287,7 +287,7 @@ rules:
         in the model. Without it, the runtime cannot determine which version
         of the operator to use.
 
-    - code: ONNX018
+    - code: ONNX016
       name: deprecated-op
       category: spec
       severity: warning
@@ -297,7 +297,7 @@ rules:
         The operator used by this node has been deprecated in the ONNX spec.
         Deprecated operators may be removed in future versions.
 
-    - code: ONNX019
+    - code: ONNX017
       name: unregistered-op
       category: spec
       severity: error
@@ -309,7 +309,7 @@ rules:
         or a missing opset import.
 
   value:
-    - code: ONNX020
+    - code: ONNX018
       name: missing-value-type
       category: spec
       severity: info
@@ -321,9 +321,9 @@ rules:
         compatibility checks. Missing types on intermediate values may cause
         issues with downstream tools. This rule is off by default because
         intermediate values commonly lack type info before shape inference.
-        Use `--select ONNX020` to enable it.
+        Use `--select ONNX018` to enable it.
 
-    - code: ONNX021
+    - code: ONNX019
       name: undefined-value-dtype
       category: spec
       severity: error
@@ -333,7 +333,7 @@ rules:
         A value with a tensor type must have a defined dtype (not UNDEFINED).
 
     # Tensor-related rules (emitted against containing value/node)
-    - code: ONNX022
+    - code: ONNX020
       name: undefined-tensor-dtype
       category: spec
       severity: error
@@ -343,7 +343,7 @@ rules:
         Every tensor must have a defined dtype. An UNDEFINED dtype indicates
         the tensor's data type was not properly set.
 
-    - code: ONNX023
+    - code: ONNX021
       name: external-tensor-absolute-path
       category: spec
       severity: error
@@ -353,7 +353,7 @@ rules:
         External tensor locations must be relative paths to ensure model
         portability across different file systems.
 
-    - code: ONNX024
+    - code: ONNX022
       name: external-tensor-empty-location
       category: spec
       severity: error
@@ -363,7 +363,7 @@ rules:
         External tensors must have a non-empty location that points to the
         file containing the tensor data.
 
-    - code: ONNX025
+    - code: ONNX023
       name: external-tensor-outside-model-dir
       category: spec
       severity: error
@@ -373,7 +373,7 @@ rules:
         External tensor paths must not escape the model's directory (e.g.
         using "../"). This ensures the model is self-contained and portable.
 
-    - code: ONNX026
+    - code: ONNX024
       name: external-tensor-inaccessible
       category: spec
       severity: error
@@ -383,7 +383,7 @@ rules:
         The file referenced by an external tensor's location must exist and
         be readable.
 
-    - code: ONNX027
+    - code: ONNX025
       name: external-tensor-not-file
       category: spec
       severity: error
@@ -394,7 +394,7 @@ rules:
         symlinks, or other special file types are not valid.
 
   function:
-    - code: ONNX028
+    - code: ONNX026
       name: function-empty-name
       category: spec
       severity: error
@@ -403,7 +403,7 @@ rules:
       explanation: |
         Every function must have a non-empty name field.
 
-    - code: ONNX029
+    - code: ONNX027
       name: function-missing-domain
       category: spec
       severity: error
@@ -413,7 +413,7 @@ rules:
         For models with IR version 8 or higher, all functions must specify
         their domain.
 
-    - code: ONNX030
+    - code: ONNX028
       name: function-duplicate-inputs
       category: spec
       severity: error
@@ -423,7 +423,7 @@ rules:
         Function input names must be unique. Duplicate input names create
         ambiguity in value resolution.
 
-    - code: ONNX031
+    - code: ONNX029
       name: function-duplicate-outputs
       category: spec
       severity: error
@@ -432,7 +432,7 @@ rules:
       explanation: |
         Function output names must be unique.
 
-    - code: ONNX032
+    - code: ONNX030
       name: function-duplicate-attributes
       category: spec
       severity: error
@@ -441,7 +441,7 @@ rules:
       explanation: |
         Function attribute names must be unique.
 
-    - code: ONNX033
+    - code: ONNX031
       name: unsorted-function-nodes
       category: spec
       severity: error
@@ -451,7 +451,7 @@ rules:
       explanation: |
         Nodes within a function must be in topologically sorted order.
 
-    - code: ONNX034
+    - code: ONNX032
       name: function-ssa-violation
       category: spec
       severity: error
@@ -461,7 +461,7 @@ rules:
         Functions must be in Single Static Assignment (SSA) form, meaning
         each value name is assigned exactly once.
 
-    - code: ONNX035
+    - code: ONNX033
       name: function-opset-mismatch
       category: spec
       severity: error

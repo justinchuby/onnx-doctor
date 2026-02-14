@@ -50,17 +50,17 @@ class OnnxSpecProviderModelTest(unittest.TestCase):
         # Remove the default opset
         model.opset_imports.clear()
         messages = _diagnose(model)
-        self.assertIn("ONNX015", _codes(messages))
+        self.assertIn("ONNX013", _codes(messages))
 
     def test_duplicate_metadata_keys(self):
         model = _make_model()
         model.metadata_props["key1"] = "value1"
         # Can't easily duplicate keys in a dict, so this checks the code doesn't crash
         messages = _diagnose(model)
-        self.assertNotIn("ONNX014", _codes(messages))
+        self.assertNotIn("ONNX012", _codes(messages))
 
-    def test_no_false_onnx004_for_subgraph_with_outer_scope_input(self):
-        """Subgraph referencing a parent graph input should not trigger ONNX004."""
+    def test_no_false_onnx003_for_subgraph_with_outer_scope_input(self):
+        """Subgraph referencing a parent graph input should not trigger ONNX003."""
         # Parent graph: X -> Relu -> relu_out -> Loop(body uses X from outer scope)
         x = ir.Value(
             name="X", type=ir.TensorType(ir.DataType.FLOAT), shape=ir.Shape([1])
@@ -103,10 +103,10 @@ class OnnxSpecProviderModelTest(unittest.TestCase):
         messages = _diagnose(model)
         codes = _codes(messages)
         self.assertNotIn(
-            "ONNX004", codes, "Outer-scope input should not cause false ONNX004"
+            "ONNX003", codes, "Outer-scope input should not cause false ONNX003"
         )
         self.assertNotIn(
-            "ONNX005", codes, "Outer-scope input should not cause false ONNX005"
+            "ONNX004", codes, "Outer-scope input should not cause false ONNX004"
         )
 
 
@@ -122,12 +122,12 @@ class OnnxSpecProviderNodeTest(unittest.TestCase):
         )
         model = ir.serde.deserialize_model(model_proto)
         messages = _diagnose(model)
-        self.assertIn("ONNX019", _codes(messages))
+        self.assertIn("ONNX017", _codes(messages))
 
 
 class OnnxSpecProviderValueTest(unittest.TestCase):
     def test_missing_value_type_emitted(self):
-        # ONNX020 is still emitted by the provider (filtering is CLI-level)
+        # ONNX018 is still emitted by the provider (filtering is CLI-level)
         graph = ir.Graph([], [], nodes=[], name="test")
         v = ir.Value(name="untyped")
         graph._inputs = [v]
@@ -135,10 +135,10 @@ class OnnxSpecProviderValueTest(unittest.TestCase):
         model = ir.Model(graph, ir_version=10)
         model.opset_imports[""] = 21
         messages = _diagnose(model)
-        self.assertIn("ONNX020", _codes(messages))
+        self.assertIn("ONNX018", _codes(messages))
 
     def test_graph_io_missing_type(self):
-        # ONNX036: graph inputs/outputs must have type info
+        # ONNX034: graph inputs/outputs must have type info
         graph = ir.Graph([], [], nodes=[], name="test")
         v = ir.Value(name="untyped")
         graph._inputs = [v]
@@ -146,7 +146,7 @@ class OnnxSpecProviderValueTest(unittest.TestCase):
         model = ir.Model(graph, ir_version=10)
         model.opset_imports[""] = 21
         messages = _diagnose(model)
-        self.assertIn("ONNX036", _codes(messages))
+        self.assertIn("ONNX034", _codes(messages))
 
     def test_initializer_missing_const_value(self):
         # ONNX104: initializer must have const_value
@@ -179,7 +179,7 @@ class LocationTrackingTest(unittest.TestCase):
         self.assertEqual(onnx001[0].location, "graph")
 
     def test_node_message_has_correct_target(self):
-        # Create model with a fake op to trigger ONNX019
+        # Create model with a fake op to trigger ONNX017
         x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
         y_info = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
         node = onnx.helper.make_node("FakeOp", ["X"], ["Y"], name="fake_node")
@@ -189,12 +189,12 @@ class LocationTrackingTest(unittest.TestCase):
         )
         model = ir.serde.deserialize_model(model_proto)
         messages = _diagnose(model)
-        onnx019 = [m for m in messages if m.error_code == "ONNX019"]
-        self.assertTrue(len(onnx019) > 0)
-        self.assertEqual(onnx019[0].target_type, "node")
+        onnx017 = [m for m in messages if m.error_code == "ONNX017"]
+        self.assertTrue(len(onnx017) > 0)
+        self.assertEqual(onnx017[0].target_type, "node")
 
     def test_node_message_has_inferred_location(self):
-        # Create model with a fake op to trigger ONNX019
+        # Create model with a fake op to trigger ONNX017
         x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
         y_info = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
         node = onnx.helper.make_node("FakeOp", ["X"], ["Y"], name="fake_node")
@@ -204,10 +204,10 @@ class LocationTrackingTest(unittest.TestCase):
         )
         model = ir.serde.deserialize_model(model_proto)
         messages = _diagnose(model)
-        onnx019 = [m for m in messages if m.error_code == "ONNX019"]
-        self.assertTrue(len(onnx019) > 0)
+        onnx017 = [m for m in messages if m.error_code == "ONNX017"]
+        self.assertTrue(len(onnx017) > 0)
         # Format: node[index](op_type, "name")
-        self.assertIn('node[0](FakeOp, "fake_node")', onnx019[0].location)
+        self.assertIn('node[0](FakeOp, "fake_node")', onnx017[0].location)
 
     def test_value_message_has_correct_target(self):
         graph = ir.Graph([], [], nodes=[], name="test")
@@ -217,11 +217,11 @@ class LocationTrackingTest(unittest.TestCase):
         model = ir.Model(graph, ir_version=10)
         model.opset_imports[""] = 21
         messages = _diagnose(model)
-        onnx020 = [m for m in messages if m.error_code == "ONNX020"]
-        self.assertTrue(len(onnx020) > 0)
+        onnx018 = [m for m in messages if m.error_code == "ONNX018"]
+        self.assertTrue(len(onnx018) > 0)
         # target_type is "node" for values (per the existing code)
-        self.assertEqual(onnx020[0].target_type, "node")
-        self.assertIs(onnx020[0].target, v)
+        self.assertEqual(onnx018[0].target_type, "node")
+        self.assertIs(onnx018[0].target, v)
 
 
 class OnnxSpecProviderFunctionTest(unittest.TestCase):
@@ -246,19 +246,21 @@ class OnnxSpecProviderFunctionTest(unittest.TestCase):
         )
         model = ir.serde.deserialize_model(model_proto)
         messages = _diagnose(model)
-        self.assertIn("ONNX028", _codes(messages))
+        self.assertIn("ONNX026", _codes(messages))
 
-    def test_ref_attr_in_main_graph_raises_onnx041(self):
+    def test_ref_attr_in_main_graph_raises_onnx039(self):
         """Reference attributes should only appear in functions, not the main graph."""
         model = _make_model()
         # Add a reference attribute to the node in the main graph
         node = list(model.graph)[0]
-        node.attributes["test_ref"] = ir.RefAttr("test_ref", "external_attr", ir.AttributeType.FLOAT)
+        node.attributes["test_ref"] = ir.RefAttr(
+            "test_ref", "external_attr", ir.AttributeType.FLOAT
+        )
         messages = _diagnose(model)
-        self.assertIn("ONNX041", _codes(messages))
+        self.assertIn("ONNX039", _codes(messages))
 
     def test_ref_attr_in_function_is_valid(self):
-        """Reference attributes inside functions should not raise ONNX041."""
+        """Reference attributes inside functions should not raise ONNX039."""
         # Create a function with a node that has a ref attr
         func_proto = onnx.helper.make_function(
             domain="test.domain",
@@ -280,10 +282,12 @@ class OnnxSpecProviderFunctionTest(unittest.TestCase):
         # Add ref attr to the function node (valid usage)
         func = list(model.functions.values())[0]
         node = list(func)[0]
-        node.attributes["test_ref"] = ir.RefAttr("test_ref", "external_attr", ir.AttributeType.FLOAT)
+        node.attributes["test_ref"] = ir.RefAttr(
+            "test_ref", "external_attr", ir.AttributeType.FLOAT
+        )
         messages = _diagnose(model)
-        # ONNX041 should NOT be raised
-        self.assertNotIn("ONNX041", _codes(messages))
+        # ONNX039 should NOT be raised
+        self.assertNotIn("ONNX039", _codes(messages))
 
 
 class DiagnosticsMessageFieldsTest(unittest.TestCase):
@@ -321,7 +325,7 @@ class FixTest(unittest.TestCase):
         messages2 = _diagnose(model)
         self.assertNotIn("ONNX001", _codes(messages2))
 
-    def test_onnx004_fix_sorts_graph(self):
+    def test_onnx003_fix_sorts_graph(self):
         # Create a model with unsorted nodes
         x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
         z_info = onnx.helper.make_tensor_value_info("Z", onnx.TensorProto.FLOAT, [1])
@@ -333,15 +337,15 @@ class FixTest(unittest.TestCase):
         )
         model = ir.serde.deserialize_model(model_proto)
         messages = _diagnose(model)
-        onnx004 = [m for m in messages if m.error_code == "ONNX004"]
-        self.assertTrue(len(onnx004) > 0)
-        msg = onnx004[0]
+        onnx003 = [m for m in messages if m.error_code == "ONNX003"]
+        self.assertTrue(len(onnx003) > 0)
+        msg = onnx003[0]
         self.assertIsNotNone(msg.fix)
         # Apply the fix
         msg.fix()
-        # Re-diagnose should not have ONNX004
+        # Re-diagnose should not have ONNX003
         messages2 = _diagnose(model)
-        self.assertNotIn("ONNX004", _codes(messages2))
+        self.assertNotIn("ONNX003", _codes(messages2))
 
     def test_fixable_messages_have_fix_callable(self):
         model = _make_model(graph_name="")
@@ -352,8 +356,8 @@ class FixTest(unittest.TestCase):
                     msg.fix, f"{msg.error_code} is fixable but has no fix"
                 )
 
-    def test_no_false_onnx009_for_initializer_as_graph_output(self):
-        """Initializers used as subgraph outputs should not trigger ONNX009."""
+    def test_no_false_onnx007_for_initializer_as_graph_output(self):
+        """Initializers used as subgraph outputs should not trigger ONNX007."""
         # Build a model with an If node whose then_branch has an initializer as output
         x = ir.Value(name="X")
         cond = ir.Value(name="cond")
@@ -387,13 +391,13 @@ class FixTest(unittest.TestCase):
         )
         model = ir.Model(graph, ir_version=9)
         messages = _diagnose(model)
-        onnx009_codes = [m for m in messages if m.error_code == "ONNX009"]
-        self.assertEqual(onnx009_codes, [], f"Unexpected ONNX009: {onnx009_codes}")
+        onnx007_codes = [m for m in messages if m.error_code == "ONNX007"]
+        self.assertEqual(onnx007_codes, [], f"Unexpected ONNX007: {onnx007_codes}")
 
 
 class SubgraphShadowingTest(unittest.TestCase):
     def test_subgraph_shadowing_detected(self):
-        """Subgraph that redefines a name from the outer graph triggers ONNX040."""
+        """Subgraph that redefines a name from the outer graph triggers ONNX038."""
         x = ir.Value(
             name="X", type=ir.TensorType(ir.DataType.FLOAT), shape=ir.Shape([1])
         )
@@ -439,10 +443,10 @@ class SubgraphShadowingTest(unittest.TestCase):
         )
         model = ir.Model(graph, ir_version=9)
         messages = _diagnose(model)
-        self.assertIn("ONNX040", _codes(messages))
+        self.assertIn("ONNX038", _codes(messages))
 
-    def test_no_shadowing_no_onnx040(self):
-        """Subgraph with unique names should not trigger ONNX040."""
+    def test_no_shadowing_no_onnx038(self):
+        """Subgraph with unique names should not trigger ONNX038."""
         x = ir.Value(
             name="X", type=ir.TensorType(ir.DataType.FLOAT), shape=ir.Shape([1])
         )
@@ -488,7 +492,7 @@ class SubgraphShadowingTest(unittest.TestCase):
         )
         model = ir.Model(graph, ir_version=9)
         messages = _diagnose(model)
-        self.assertNotIn("ONNX040", _codes(messages))
+        self.assertNotIn("ONNX038", _codes(messages))
 
 
 if __name__ == "__main__":
