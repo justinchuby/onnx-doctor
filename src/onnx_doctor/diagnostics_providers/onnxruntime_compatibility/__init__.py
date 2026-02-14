@@ -115,28 +115,37 @@ class OnnxRuntimeCompatibilityLinter(onnx_doctor.DiagnosticsProvider):
 
     def __init__(self, execution_provider: str = "CPUExecutionProvider"):
         self.execution_provider = execution_provider
-        self.ir_version = None
         with open(
             pathlib.Path(__file__).parent / "ort_supported_schemas.json",
             encoding="utf-8",
         ) as f:
             support_table = json.load(f)
         self.support_table = _get_op_support_table(support_table)
-        self.opset_imports = {}
-        self.imported_functions = set()
 
-    def check_model(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
-        self.ir_version = model.ir_version
-        self.opset_imports = model.opset_imports
-        self.imported_functions = set(model.functions)
-        return
-        yield
+    def diagnose(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Analyze the model for ONNX Runtime compatibility issues."""
+        opset_imports = dict(model.opset_imports)
+        imported_functions = set(model.functions)
 
-    def check_node(self, node: ir.Node) -> onnx_doctor.DiagnosticsMessageIterator:
+        # Check all nodes in the main graph (including subgraphs)
+        for node in ir.traversal.RecursiveGraphIterator(model.graph):
+            yield from self._check_node(node, opset_imports, imported_functions)
+
+        # Check nodes in functions
+        for func in model.functions.values():
+            for node in func:
+                yield from self._check_node(node, opset_imports, imported_functions)
+
+    def _check_node(
+        self,
+        node: ir.Node,
+        opset_imports: dict[str, int],
+        imported_functions: set,
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check a single node for ORT compatibility."""
         function_op_id = (node.domain, node.op_type, node.overload)
-        if function_op_id in self.imported_functions:
+        if function_op_id in imported_functions:
             # The op is a function op and the function is defined
-            # TODO: Handle opset version
             return
         op_id = (node.domain, node.op_type)
         if op_id in _SPECIAL_OPS_TO_SKIP:
@@ -152,7 +161,7 @@ class OnnxRuntimeCompatibilityLinter(onnx_doctor.DiagnosticsProvider):
                 rule=ORT001,
             )
             return
-        opset_version = self.opset_imports[node.domain]
+        opset_version = opset_imports.get(node.domain, 0)
         found_schema = None
         for schema in schemas:
             if _version_in_range(opset_version, schema.version_range):

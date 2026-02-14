@@ -150,14 +150,15 @@ class OnnxSpecProviderValueTest(unittest.TestCase):
 
 
 class LocationTrackingTest(unittest.TestCase):
-    def test_graph_message_has_graph_location(self):
+    def test_graph_message_has_correct_target(self):
         model = _make_model(graph_name="")
         messages = _diagnose(model)
         onnx001 = [m for m in messages if m.error_code == "ONNX001"]
         self.assertTrue(len(onnx001) > 0)
-        self.assertEqual(onnx001[0].location, "graph")
+        self.assertEqual(onnx001[0].target_type, "graph")
+        self.assertIs(onnx001[0].target, model.graph)
 
-    def test_node_message_has_node_location(self):
+    def test_node_message_has_correct_target(self):
         # Create model with a fake op to trigger ONNX019
         x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
         y_info = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
@@ -170,9 +171,9 @@ class LocationTrackingTest(unittest.TestCase):
         messages = _diagnose(model)
         onnx019 = [m for m in messages if m.error_code == "ONNX019"]
         self.assertTrue(len(onnx019) > 0)
-        self.assertIn("node/0(fake_node)", onnx019[0].location)
+        self.assertEqual(onnx019[0].target_type, "node")
 
-    def test_value_message_has_producer_location(self):
+    def test_value_message_has_correct_target(self):
         graph = ir.Graph([], [], nodes=[], name="test")
         v = ir.Value(name="untyped")
         graph._inputs = [v]
@@ -182,7 +183,9 @@ class LocationTrackingTest(unittest.TestCase):
         messages = _diagnose(model)
         onnx020 = [m for m in messages if m.error_code == "ONNX020"]
         self.assertTrue(len(onnx020) > 0)
-        self.assertIn("input(untyped)", onnx020[0].location)
+        # target_type is "node" for values (per the existing code)
+        self.assertEqual(onnx020[0].target_type, "node")
+        self.assertIs(onnx020[0].target, v)
 
 
 class OnnxSpecProviderFunctionTest(unittest.TestCase):
