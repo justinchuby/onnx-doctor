@@ -248,6 +248,43 @@ class OnnxSpecProviderFunctionTest(unittest.TestCase):
         messages = _diagnose(model)
         self.assertIn("ONNX028", _codes(messages))
 
+    def test_ref_attr_in_main_graph_raises_onnx041(self):
+        """Reference attributes should only appear in functions, not the main graph."""
+        model = _make_model()
+        # Add a reference attribute to the node in the main graph
+        node = list(model.graph)[0]
+        node.attributes["test_ref"] = ir.RefAttr("test_ref", "external_attr", ir.AttributeType.FLOAT)
+        messages = _diagnose(model)
+        self.assertIn("ONNX041", _codes(messages))
+
+    def test_ref_attr_in_function_is_valid(self):
+        """Reference attributes inside functions should not raise ONNX041."""
+        # Create a function with a node that has a ref attr
+        func_proto = onnx.helper.make_function(
+            domain="test.domain",
+            fname="MyFunc",
+            inputs=["X"],
+            outputs=["Y"],
+            nodes=[onnx.helper.make_node("Relu", ["X"], ["Y"])],
+            opset_imports=[onnx.helper.make_opsetid("", 21)],
+        )
+        x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
+        y_info = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
+        graph = onnx.helper.make_graph([], "test", [x_info], [y_info])
+        model_proto = onnx.helper.make_model(
+            graph,
+            opset_imports=[onnx.helper.make_opsetid("", 21)],
+            functions=[func_proto],
+        )
+        model = ir.serde.deserialize_model(model_proto)
+        # Add ref attr to the function node (valid usage)
+        func = list(model.functions.values())[0]
+        node = list(func)[0]
+        node.attributes["test_ref"] = ir.RefAttr("test_ref", "external_attr", ir.AttributeType.FLOAT)
+        messages = _diagnose(model)
+        # ONNX041 should NOT be raised
+        self.assertNotIn("ONNX041", _codes(messages))
+
 
 class DiagnosticsMessageFieldsTest(unittest.TestCase):
     def test_message_has_rule_field(self):

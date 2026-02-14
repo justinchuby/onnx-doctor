@@ -104,10 +104,14 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     for tensor in attr.value:
                         yield from self._check_tensor(tensor, node)
                 elif attr.type == ir.AttributeType.GRAPH:
-                    yield from self._check_graph(attr.value, model, opset_imports)
+                    yield from self._check_graph(
+                        attr.value, model, opset_imports, in_function=True
+                    )
                 elif attr.type == ir.AttributeType.GRAPHS:
                     for subgraph in attr.value:
-                        yield from self._check_graph(subgraph, model, opset_imports)
+                        yield from self._check_graph(
+                            subgraph, model, opset_imports, in_function=True
+                        )
 
     def _check_model(
         self,
@@ -161,6 +165,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         model: ir.Model,
         opset_imports: dict[str, int],
         is_root: bool = False,
+        in_function: bool = False,
     ) -> onnx_doctor.DiagnosticsMessageIterator:
         """Check a graph and its contents recursively."""
         # ONNX001: empty-graph-name (root graph only)
@@ -375,16 +380,28 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             for out in node.outputs:
                 yield from self._check_value(out, model)
             for attr in node.attributes.values():
+                # ONNX041: ref-attr-outside-function
+                if attr.is_ref() and not in_function:
+                    yield _emit(
+                        _rule("ONNX041"),
+                        "node",
+                        node,
+                        message=f"Attribute '{attr.name}' is a reference attribute, which is only valid inside functions.",
+                    )
                 if attr.type == ir.AttributeType.TENSOR:
                     yield from self._check_tensor(attr.value, node)
                 elif attr.type == ir.AttributeType.TENSORS:
                     for tensor in attr.value:
                         yield from self._check_tensor(tensor, node)
                 elif attr.type == ir.AttributeType.GRAPH:
-                    yield from self._check_graph(attr.value, model, opset_imports)
+                    yield from self._check_graph(
+                        attr.value, model, opset_imports, in_function=in_function
+                    )
                 elif attr.type == ir.AttributeType.GRAPHS:
                     for subgraph in attr.value:
-                        yield from self._check_graph(subgraph, model, opset_imports)
+                        yield from self._check_graph(
+                            subgraph, model, opset_imports, in_function=in_function
+                        )
 
         for initializer in graph.initializers.values():
             # ONNX104: initializer-missing-const-value

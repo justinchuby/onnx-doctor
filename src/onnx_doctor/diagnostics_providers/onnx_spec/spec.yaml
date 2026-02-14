@@ -156,6 +156,19 @@ rules:
         and initializers of a subgraph are distinct from names visible in
         outer scopes.  Variable shadowing is not allowed.
 
+    - code: ONNX041
+      name: ref-attr-outside-function
+      category: spec
+      severity: error
+      message: Reference attribute can only appear in function nodes, not in the main graph or its subgraphs.
+      suggestion: Use a regular attribute instead, or move this node into a function.
+      explanation: |
+        Reference attributes (`attr_ref` in ONNX protobuf, `is_ref()` in onnx_ir) are
+        placeholders that refer to function parameters. They are only valid inside
+        function bodies where they bind to attributes passed when the function is called.
+        Using a reference attribute in the main graph or a subgraph is invalid because
+        there is no enclosing function to provide the referenced value.
+
     - code: ONNX101
       name: duplicate-graph-input
       category: ir
