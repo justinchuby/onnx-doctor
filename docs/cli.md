@@ -65,7 +65,7 @@ onnx-doctor check model.onnx --output-format github
     "file": "model.onnx",
     "code": "ONNX001",
     "severity": "error",
-    "message": "Graph name is empty.",
+    "message": "Graph name of the root graph is empty.",
     "target_type": "graph",
     "rule_name": "empty-graph-name",
     "suggestion": "Set the name of the graph, e.g. `graph.name = 'main_graph'`."

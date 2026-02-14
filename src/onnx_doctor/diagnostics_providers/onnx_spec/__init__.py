@@ -113,17 +113,17 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             yield _emit(_rule("ONNX016"), "model", model)
 
     def check_graph(self, graph: ir.Graph) -> onnx_doctor.DiagnosticsMessageIterator:
-        # ONNX001: empty-graph-name
-        if not graph.name:
+        # ONNX001: empty-graph-name (root graph only)
+        # ONNX036/ONNX037: only apply to the root graph, not subgraphs
+        is_root_graph = self._root_graph is not None and graph is self._root_graph
+
+        if is_root_graph and not graph.name:
             yield _emit(
                 _rule("ONNX001"),
                 "graph",
                 graph,
                 fix=lambda: setattr(graph, "name", "main_graph"),
             )
-
-        # ONNX036/ONNX037: only apply to the root graph, not subgraphs
-        is_root_graph = self._root_graph is not None and graph is self._root_graph
 
         # ONNX036/ONNX037: input type/shape, ONNX038/ONNX039: output type/shape
         if is_root_graph:

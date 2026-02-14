@@ -122,7 +122,7 @@ JSON output example:
     "file": "model.onnx",
     "code": "ONNX001",
     "severity": "error",
-    "message": "Graph name is empty.",
+    "message": "Graph name of the root graph is empty.",
     "target_type": "graph",
     "location": "graph",
     "rule_name": "empty-graph-name",
@@ -140,7 +140,7 @@ onnx-doctor explain ONNX001
 ```
 ONNX001: empty-graph-name
 
-  Message: Graph name is empty.
+  Message: Graph name of the root graph is empty.
   Severity: error
   Category: spec
   Target: graph
