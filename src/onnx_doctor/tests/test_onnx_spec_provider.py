@@ -252,7 +252,7 @@ class OnnxSpecProviderFunctionTest(unittest.TestCase):
         """Reference attributes should only appear in functions, not the main graph."""
         model = _make_model()
         # Add a reference attribute to the node in the main graph
-        node = list(model.graph)[0]
+        node = model.graph[0]
         node.attributes["test_ref"] = ir.RefAttr(
             "test_ref", "external_attr", ir.AttributeType.FLOAT
         )
@@ -280,8 +280,8 @@ class OnnxSpecProviderFunctionTest(unittest.TestCase):
         )
         model = ir.serde.deserialize_model(model_proto)
         # Add ref attr to the function node (valid usage)
-        func = list(model.functions.values())[0]
-        node = list(func)[0]
+        func = next(iter(model.functions.values()))
+        node = func[0]
         node.attributes["test_ref"] = ir.RefAttr(
             "test_ref", "external_attr", ir.AttributeType.FLOAT
         )
