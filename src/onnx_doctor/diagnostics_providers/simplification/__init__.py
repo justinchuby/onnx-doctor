@@ -45,12 +45,28 @@ class SimplificationProvider(onnx_doctor.DiagnosticsProvider):
 
     PRODUCER = "SimplificationProvider"
 
-    def __init__(self) -> None:
-        self._model: ir.Model | None = None
+    def diagnose(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Analyze the model for simplification opportunities."""
+        # Check for unused functions, opsets at model level
+        yield from self._check_model(model)
 
-    def check_model(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
-        self._model = model
+        # Check for unused nodes in the main graph
+        yield from self._check_graph(model.graph, model)
 
+        # Check subgraphs recursively
+        for node in ir.traversal.RecursiveGraphIterator(model.graph):
+            for attr in node.attributes.values():
+                if attr.type == ir.AttributeType.GRAPH:
+                    yield from self._check_graph(attr.value, model)
+                elif attr.type == ir.AttributeType.GRAPHS:
+                    for subgraph in attr.value:
+                        yield from self._check_graph(subgraph, model)
+
+    def _check_model(
+        self,
+        model: ir.Model,
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check model-level simplification opportunities."""
         # SIM001: unused-functions
         if model.functions:
             used_ids: set[tuple[str, str]] = set()
@@ -65,7 +81,7 @@ class SimplificationProvider(onnx_doctor.DiagnosticsProvider):
 
             unused_funcs = [
                 f
-                for key, f in model.functions.items()
+                for f in model.functions.values()
                 if (f.domain or "", f.name or "") not in used_ids
             ]
             if unused_funcs:
@@ -100,12 +116,14 @@ class SimplificationProvider(onnx_doctor.DiagnosticsProvider):
                 fix=lambda: _apply_remove_unused_opsets(model),
             )
 
-    def check_graph(self, graph: ir.Graph) -> onnx_doctor.DiagnosticsMessageIterator:
-        model = self._model
-
+    def _check_graph(
+        self,
+        graph: ir.Graph,
+        model: ir.Model,
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check a graph for unused nodes."""
         # SIM003: unused-nodes
         graph_outputs = frozenset(graph.outputs)
-        unused_count = 0
         for node in reversed(list(graph)):
             removable = True
             for output in node.outputs:
@@ -113,17 +131,17 @@ class SimplificationProvider(onnx_doctor.DiagnosticsProvider):
                     removable = False
                     break
             if removable:
-                unused_count += 1
-        if unused_count > 0:
-            yield _emit(
-                _rule("SIM003"),
-                "graph",
-                graph,
-                message=f"Graph has {unused_count} unused node(s) whose outputs are not consumed.",
-                fix=(lambda: _apply_remove_unused_nodes(model))
-                if model is not None
-                else None,
-            )
+                if node.name:
+                    node_label = f'"{node.name}" ({node.op_type})'
+                else:
+                    node_label = f"({node.op_type})"
+                yield _emit(
+                    _rule("SIM003"),
+                    "node",
+                    node,
+                    message=f"Node {node_label} outputs are not consumed.",
+                    fix=lambda: _apply_remove_unused_nodes(model),
+                )
 
 
 def _apply_remove_unused_functions(model: ir.Model) -> None:

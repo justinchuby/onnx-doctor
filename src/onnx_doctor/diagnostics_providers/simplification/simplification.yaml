@@ -23,13 +23,13 @@ rules:
         Opset imports that are not referenced by any node in the graph are
         unnecessary. Removing them simplifies the model metadata.
 
-  graph:
+  node:
     - code: SIM003
-      name: unused-nodes
+      name: unused-node
       category: spec
       severity: info
       fixable: true
-      message: Graph contains nodes whose outputs are not consumed.
+      message: Node outputs are not consumed.
       suggestion: Remove unused nodes with `--fix` or `RemoveUnusedNodesPass`.
       explanation: |
         Nodes whose outputs are not consumed by any subsequent node or graph

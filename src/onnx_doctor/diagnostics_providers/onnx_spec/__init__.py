@@ -52,35 +52,86 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
 
     PRODUCER = "OnnxSpecProvider"
 
-    def __init__(self) -> None:
-        self._ir_version: int | None = None
-        self._opset_imports: dict[str, int] = {}
-        self._model_dir: pathlib.Path | None = None
-        self._root_graph: ir.Graph | None = None
-        self._model: ir.Model | None = None
+    def diagnose(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Analyze the model for ONNX spec compliance issues."""
+        # Store model-level state
+        ir_version = model.ir_version
+        opset_imports = dict(model.opset_imports)
 
-    def check_model(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
-        self._ir_version = model.ir_version
-        self._opset_imports = dict(model.opset_imports)
-        self._root_graph = model.graph
-        self._model = model
+        # Model-level checks
+        yield from self._check_model(model, ir_version, opset_imports)
 
+        # Check all functions
+        for func in model.functions.values():
+            yield from self._check_function(func, ir_version, opset_imports)
+            yield from self._check_function_contents(func, model, opset_imports)
+
+        # Check main graph (root graph)
+        yield from self._check_graph(model.graph, model, opset_imports, is_root=True)
+
+        # Whole-model shadowing analysis
+        yield from self._analyze_shadowing(model)
+
+    def _check_function_contents(
+        self,
+        func: ir.Function,
+        model: ir.Model,
+        opset_imports: dict[str, int],
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check values, nodes, and attributes inside a function.
+
+        Mirrors the graph traversal to ensure function contents get the same
+        checks as graph contents (ONNX020/ONNX103 for values, ONNX022-ONNX027
+        for tensors, and recursive subgraph checks).
+        """
+        # Check function inputs
+        for value in func.inputs:
+            yield from self._check_value(value, model)
+
+        # Check function outputs
+        for value in func.outputs:
+            yield from self._check_value(value, model)
+
+        # Check nodes and their outputs/attributes
+        for node in func:
+            yield from self._check_node(node, opset_imports)
+            for out in node.outputs:
+                yield from self._check_value(out, model)
+            for attr in node.attributes.values():
+                if attr.type == ir.AttributeType.TENSOR:
+                    yield from self._check_tensor(attr.value, node)
+                elif attr.type == ir.AttributeType.TENSORS:
+                    for tensor in attr.value:
+                        yield from self._check_tensor(tensor, node)
+                elif attr.type == ir.AttributeType.GRAPH:
+                    yield from self._check_graph(attr.value, model, opset_imports)
+                elif attr.type == ir.AttributeType.GRAPHS:
+                    for subgraph in attr.value:
+                        yield from self._check_graph(subgraph, model, opset_imports)
+
+    def _check_model(
+        self,
+        model: ir.Model,
+        ir_version: int | None,
+        opset_imports: dict[str, int],
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check model-level properties."""
         # ONNX012: invalid-ir-version
-        if model.ir_version is None or model.ir_version < 1:
+        if ir_version is None or ir_version < 1:
             yield _emit(
                 _rule("ONNX012"),
                 "model",
                 model,
-                message=f"Model ir_version is {model.ir_version!r}, which is invalid.",
+                message=f"Model ir_version is {ir_version!r}, which is invalid.",
             )
 
         # ONNX013: ir-version-too-new
-        if model.ir_version is not None and model.ir_version > _MAX_IR_VERSION:
+        if ir_version is not None and ir_version > _MAX_IR_VERSION:
             yield _emit(
                 _rule("ONNX013"),
                 "model",
                 model,
-                message=f"Model ir_version {model.ir_version} is newer than the checker supports (max {_MAX_IR_VERSION}).",
+                message=f"Model ir_version {ir_version} is newer than the checker supports (max {_MAX_IR_VERSION}).",
             )
 
         # ONNX014: duplicate-metadata-keys
@@ -97,27 +148,23 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 seen_keys.add(key)
 
         # ONNX015: missing-default-opset
-        if (
-            model.ir_version is not None
-            and model.ir_version >= 3
-            and "" not in model.opset_imports
-        ):
+        if ir_version is not None and ir_version >= 3 and "" not in opset_imports:
             yield _emit(_rule("ONNX015"), "model", model)
 
         # ONNX016: unexpected-opset-import
-        if (
-            model.ir_version is not None
-            and model.ir_version < 3
-            and len(model.opset_imports) > 0
-        ):
+        if ir_version is not None and ir_version < 3 and len(opset_imports) > 0:
             yield _emit(_rule("ONNX016"), "model", model)
 
-    def check_graph(self, graph: ir.Graph) -> onnx_doctor.DiagnosticsMessageIterator:
+    def _check_graph(
+        self,
+        graph: ir.Graph,
+        model: ir.Model,
+        opset_imports: dict[str, int],
+        is_root: bool = False,
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check a graph and its contents recursively."""
         # ONNX001: empty-graph-name (root graph only)
-        # ONNX036/ONNX037: only apply to the root graph, not subgraphs
-        is_root_graph = self._root_graph is not None and graph is self._root_graph
-
-        if is_root_graph and not graph.name:
+        if is_root and not graph.name:
             yield _emit(
                 _rule("ONNX001"),
                 "graph",
@@ -125,8 +172,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 fix=lambda: setattr(graph, "name", "main_graph"),
             )
 
-        # ONNX036/ONNX037: input type/shape, ONNX038/ONNX039: output type/shape
-        if is_root_graph:
+        # ONNX036/ONNX037: input type/shape, ONNX038/ONNX039: output type/shape (root only)
+        if is_root:
             for value in graph.inputs:
                 if value.type is None:
                     yield _emit(
@@ -135,7 +182,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                         graph,
                         message=f"Graph input '{value.name}' is missing type information.",
                     )
-                elif value.shape is None:
+                elif isinstance(value.type, ir.TensorType) and value.shape is None:
+                    # Only check shape for TensorType (SequenceType etc. don't have shapes)
                     yield _emit(
                         _rule("ONNX037"),
                         "graph",
@@ -150,7 +198,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                         graph,
                         message=f"Graph output '{value.name}' is missing type information.",
                     )
-                elif value.shape is None:
+                elif isinstance(value.type, ir.TensorType) and value.shape is None:
+                    # Only check shape for TensorType (SequenceType etc. don't have shapes)
                     yield _emit(
                         _rule("ONNX039"),
                         "graph",
@@ -179,7 +228,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     "graph",
                     graph,
                     message=f"Duplicate Value object in graph outputs: '{value.name}'.",
-                    fix=lambda: _apply_output_fix(self._model),
+                    fix=lambda: _apply_output_fix(model),
                 )
             seen.add(value)
 
@@ -190,7 +239,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     _rule("ONNX003"),
                     "graph",
                     graph,
-                    fix=lambda: _apply_name_fix(self._model),
+                    fix=lambda: _apply_name_fix(model),
                 )
 
         # Collect known values for topological order check
@@ -209,23 +258,19 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 if inp not in known_values:
                     producer = inp.producer()
                     if producer is not None and producer.graph is graph:
-                        # Producer is in this graph but hasn't been seen yet — unsorted
                         is_sorted = False
                     elif (
                         producer is None
                         and not inp.is_graph_input()
                         and not inp.is_initializer()
                     ):
-                        # Truly unknown value — not from any scope
                         is_sorted = False
-                        # ONNX005: unknown-node-input
                         yield _emit(
                             _rule("ONNX005"),
                             "graph",
                             graph,
                             message=f"Node '{node.op_type}' has input '{inp.name}' not produced by any node or graph input.",
                         )
-                    # Otherwise: outer-scope reference (parent graph input/initializer/node) — not a sort issue
             for out in node.outputs:
                 known_values.add(out)
 
@@ -241,7 +286,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
         for node in graph:
             try:
                 domain = node.domain if node.domain else ""
-                opset_version = self._opset_imports.get(domain)
+                opset_version = opset_imports.get(domain)
                 if opset_version is not None:
                     schema = onnx.defs.get_schema(node.op_type, opset_version, domain)
                     if (
@@ -303,12 +348,10 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     graph,
                     message=f"Graph output '{out.name}' is produced in a different graph.",
                     suggestion="Apply `--fix` to insert Identity nodes with `OutputFixPass`.",
-                    fix=lambda: _apply_output_fix(self._model),
+                    fix=lambda: _apply_output_fix(model),
                 )
 
         # ONNX011: initializer-name-conflict
-        # Check for name conflicts between initializers and subgraph inputs.
-        # This is checked within subgraphs of nodes in this graph.
         init_names = set(graph.initializers.keys())
         for node in graph:
             for attr in node.attributes.values():
@@ -323,11 +366,48 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                                 message=f"Initializer '{sub_input.name}' conflicts with subgraph input name.",
                             )
 
-    def check_node(self, node: ir.Node) -> onnx_doctor.DiagnosticsMessageIterator:
+        # Check nodes, values, tensors, and subgraphs
+        for value in graph.inputs:
+            yield from self._check_value(value, model)
+
+        for node in graph:
+            yield from self._check_node(node, opset_imports)
+            for out in node.outputs:
+                yield from self._check_value(out, model)
+            for attr in node.attributes.values():
+                if attr.type == ir.AttributeType.TENSOR:
+                    yield from self._check_tensor(attr.value, node)
+                elif attr.type == ir.AttributeType.TENSORS:
+                    for tensor in attr.value:
+                        yield from self._check_tensor(tensor, node)
+                elif attr.type == ir.AttributeType.GRAPH:
+                    yield from self._check_graph(attr.value, model, opset_imports)
+                elif attr.type == ir.AttributeType.GRAPHS:
+                    for subgraph in attr.value:
+                        yield from self._check_graph(subgraph, model, opset_imports)
+
+        for initializer in graph.initializers.values():
+            # ONNX104: initializer-missing-const-value
+            if initializer.const_value is None:
+                yield _emit(
+                    _rule("ONNX104"),
+                    "graph",
+                    graph,
+                    message=f"Initializer '{initializer.name}' has no const_value set.",
+                )
+            else:
+                yield from self._check_tensor(initializer.const_value, initializer)
+
+    def _check_node(
+        self,
+        node: ir.Node,
+        opset_imports: dict[str, int],
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check a single node."""
         domain = node.domain if node.domain else ""
 
         # ONNX017: missing-opset-for-domain
-        if domain not in self._opset_imports:
+        if domain not in opset_imports:
             yield _emit(
                 _rule("ONNX017"),
                 "node",
@@ -336,10 +416,9 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             )
             return
 
-        opset_version = self._opset_imports[domain]
+        opset_version = opset_imports[domain]
 
         # ONNX018: deprecated-op + ONNX019: unregistered-op
-        # Only check schema for official ONNX domains
         official_domains = {"", "ai.onnx", "ai.onnx.ml"}
         try:
             schema = onnx.defs.get_schema(node.op_type, opset_version, domain)
@@ -359,14 +438,26 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     message=f"No schema found for '{domain}::{node.op_type}' at opset version {opset_version}.",
                 )
 
-    def check_value(self, value: ir.Value) -> onnx_doctor.DiagnosticsMessageIterator:
+    def _check_value(
+        self,
+        value: ir.Value,
+        model: ir.Model,
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check a single value."""
         # ONNX103: empty-value-name
-        if not value.name:
+        # Only check if value has consumers OR is a graph input/output/initializer
+        needs_name = (
+            value.uses()
+            or value.is_graph_input()
+            or value.is_graph_output()
+            or value.is_initializer()
+        )
+        if not value.name and needs_name:
             yield _emit(
                 _rule("ONNX103"),
-                "node",
+                "value",
                 value,
-                fix=lambda: _apply_name_fix(self._model),
+                fix=lambda: _apply_name_fix(model),
             )
 
         # ONNX020: missing-value-type
@@ -387,13 +478,28 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     message=f"Value '{value.name}' has tensor type with UNDEFINED dtype.",
                 )
 
-    def check_tensor(self, tensor: ir.Tensor) -> onnx_doctor.DiagnosticsMessageIterator:
+    def _check_tensor(
+        self,
+        tensor: ir.Tensor,
+        container: ir.Node | ir.Value,
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check a single tensor.
+
+        Args:
+            tensor: The tensor to check.
+            container: The containing Node (for attribute tensors) or Value (for initializers).
+        """
+        # Determine target_type based on container
+        target_type: onnx_doctor._message.PossibleTargetTypes = (
+            "node" if isinstance(container, ir.Node) else "value"
+        )
+
         # ONNX022: undefined-tensor-dtype
         if tensor.dtype == ir.DataType.UNDEFINED:
             yield _emit(
                 _rule("ONNX022"),
-                "tensor",
-                tensor,
+                target_type,
+                container,
                 message=f"Tensor '{tensor.name}' has UNDEFINED dtype.",
             )
 
@@ -405,8 +511,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             if not location:
                 yield _emit(
                     _rule("ONNX024"),
-                    "tensor",
-                    tensor,
+                    target_type,
+                    container,
                     message=f"External tensor '{tensor.name}' has empty location.",
                 )
                 return
@@ -415,8 +521,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             if os.path.isabs(location):
                 yield _emit(
                     _rule("ONNX023"),
-                    "tensor",
-                    tensor,
+                    target_type,
+                    container,
                     message=f"External tensor '{tensor.name}' has absolute path: '{location}'.",
                 )
 
@@ -424,8 +530,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             if ".." in pathlib.PurePosixPath(location).parts:
                 yield _emit(
                     _rule("ONNX025"),
-                    "tensor",
-                    tensor,
+                    target_type,
+                    container,
                     message=f"External tensor '{tensor.name}' path '{location}' escapes model directory.",
                 )
 
@@ -435,31 +541,31 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 if not full_path.exists():
                     yield _emit(
                         _rule("ONNX026"),
-                        "tensor",
-                        tensor,
+                        target_type,
+                        container,
                         message=f"External tensor '{tensor.name}' file not found: '{full_path}'.",
                     )
                 elif not full_path.is_file():
                     yield _emit(
                         _rule("ONNX027"),
-                        "tensor",
-                        tensor,
+                        target_type,
+                        container,
                         message=f"External tensor '{tensor.name}' path is not a regular file: '{full_path}'.",
                     )
 
-    def check_function(
-        self, function: ir.Function
+    def _check_function(
+        self,
+        function: ir.Function,
+        ir_version: int | None,
+        opset_imports: dict[str, int],
     ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check a single function."""
         # ONNX028: function-empty-name
         if not function.name:
             yield _emit(_rule("ONNX028"), "function", function)
 
         # ONNX029: function-missing-domain
-        if (
-            self._ir_version is not None
-            and self._ir_version >= 8
-            and not function.domain
-        ):
+        if ir_version is not None and ir_version >= 8 and not function.domain:
             yield _emit(_rule("ONNX029"), "function", function)
 
         # ONNX030: function-duplicate-inputs
@@ -544,23 +650,24 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 )
 
         # ONNX035: function-opset-mismatch
-        if self._opset_imports:
+        if opset_imports:
             for domain, version in function.opset_imports.items():
-                if (
-                    domain in self._opset_imports
-                    and self._opset_imports[domain] != version
-                ):
+                if domain in opset_imports and opset_imports[domain] != version:
                     yield _emit(
                         _rule("ONNX035"),
                         "function",
                         function,
                         message=(
                             f"Function '{function.name}' imports opset {domain}:{version}, "
-                            f"but model imports {domain}:{self._opset_imports[domain]}."
+                            f"but model imports {domain}:{opset_imports[domain]}."
                         ),
                     )
 
-    def analyze_model(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
+    def _analyze_shadowing(
+        self,
+        model: ir.Model,
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Check for variable shadowing across scopes."""
         # ONNX040: subgraph-variable-shadowing
         yield from self._check_shadowing(model.graph, frozenset())
         for func in model.functions.values():

@@ -165,11 +165,11 @@ onnx-doctor list-rules
 
 ## Rules
 
-ONNX Doctor ships with **61 built-in rules** across five providers:
+ONNX Doctor ships with **63 built-in rules** across five providers:
 
 | Prefix | Provider | Description |
 |--------|----------|-------------|
-| `ONNX` | ONNX Spec | 40 rules for ONNX spec compliance (graph, model, node, value, tensor, function) |
+| `ONNX` | ONNX Spec | 42 rules for ONNX spec compliance (graph, model, node, value, tensor, function) |
 | `PB` | Protobuf | 13 rules for protobuf-specific issues |
 | `SIM` | Simplification | 3 rules for removing unused elements (functions, opsets, nodes) |
 | `ORT` | ORT Compatibility | 5 rules for ONNX Runtime compatibility checks (opt-in via `--ort`) |
@@ -177,23 +177,37 @@ ONNX Doctor ships with **61 built-in rules** across five providers:
 
 ## Writing Custom Providers
 
-Create your own rules by subclassing `DiagnosticsProvider`:
+Create your own rules by subclassing `DiagnosticsProvider`. Each provider
+implements a `diagnose(model)` method that walks the model and yields messages:
 
 ```python
 import onnx_ir as ir
 import onnx_doctor
 
 class MyProvider(onnx_doctor.DiagnosticsProvider):
-    def check_graph(self, graph: ir.Graph):
-        node_count = sum(1 for _ in graph.all_nodes())
+    def diagnose(self, model: ir.Model):
+        # Walk the graph yourself — you know best how to traverse it
+        for node in ir.traversal.RecursiveGraphIterator(model.graph):
+            if some_condition(node):
+                yield onnx_doctor.DiagnosticsMessage(
+                    target_type="node",
+                    target=node,
+                    message=f"Issue with node {node.op_type}.",
+                    severity="warning",
+                    producer="MyProvider",
+                    error_code="CUSTOM001",
+                )
+
+        # Check graph-level properties
+        node_count = sum(1 for _ in model.graph)
         if node_count > 1000:
             yield onnx_doctor.DiagnosticsMessage(
                 target_type="graph",
-                target=graph,
+                target=model.graph,
                 message=f"Graph has {node_count} nodes — consider optimizing.",
                 severity="warning",
                 producer="MyProvider",
-                error_code="CUSTOM001",
+                error_code="CUSTOM002",
             )
 
 model = ir.load("model.onnx")

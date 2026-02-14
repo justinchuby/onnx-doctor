@@ -201,6 +201,18 @@ rules:
         required for serialization and debugging. Values without names may
         cause issues during export.
 
+    - code: ONNX104
+      name: initializer-missing-const-value
+      category: ir
+      severity: error
+      message: Initializer Value has no const_value set.
+      suggestion: Assign a tensor to the initializer's const_value, e.g. `value.const_value = ir.tensor(...)`.
+      explanation: |
+        In onnx_ir, initializers are Value objects stored in the graph's
+        initializers dict. Each initializer must have a `const_value` attribute
+        containing the actual tensor data. An initializer without const_value
+        cannot be serialized and indicates a malformed IR.
+
   model:
     - code: ONNX012
       name: invalid-ir-version
@@ -307,7 +319,7 @@ rules:
       explanation: |
         A value with a tensor type must have a defined dtype (not UNDEFINED).
 
-  tensor:
+    # Tensor-related rules (emitted against containing value/node)
     - code: ONNX022
       name: undefined-tensor-dtype
       category: spec

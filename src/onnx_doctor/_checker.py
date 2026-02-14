@@ -1,199 +1,125 @@
 from __future__ import annotations
 
-import typing
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Sequence
 
 import onnx_ir as ir
 
 from . import _diagnostics, _message
 
 
-def _set_location(
-    msgs: _diagnostics.DiagnosticsMessageIterator,
-    location: str,
-) -> Iterator[_message.DiagnosticsMessage]:
-    """Set location on messages that don't already have one."""
-    for msg in msgs:
-        if not msg.location:
-            msg.location = location
-        yield msg
+def _node_location(prefix: str, index: int, node: ir.Node) -> str:
+    """Build a location string for a node.
+
+    Format: `prefix:node[index](op_type, "name")` or `prefix:node[index](op_type)` if unnamed.
+    """
+    if node.name:
+        return f'{prefix}:node[{index}]({node.op_type}, "{node.name}")'
+    return f"{prefix}:node[{index}]({node.op_type})"
 
 
-def diagnose(
-    ir_object: _message.PossibleTargets,
-    diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
-) -> Sequence[_message.DiagnosticsMessage]:
-    if isinstance(ir_object, ir.Model):
-        return list(diagnose_model(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.Graph):
-        return list(diagnose_graph(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.Function):
-        return list(diagnose_function(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.Node):
-        return list(diagnose_node(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.Tensor):
-        return list(diagnose_tensor(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.Value):
-        return list(diagnose_value(ir_object, diagnostics_providers))
-    if isinstance(ir_object, ir.Attr):
-        return list(diagnose_attribute(ir_object, diagnostics_providers))
-    raise TypeError(f"Unknown IR object: {ir_object}")
+def _build_location_map(model: ir.Model) -> dict[int, str]:
+    """Build a mapping from object id to location path.
 
+    Walks the model structure once to create paths for all IR objects.
+    Uses object id() as key since IR objects may not be hashable.
+    """
+    locations: dict[int, str] = {}
 
-def diagnose_model(
-    model: ir.Model,
-    diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
-) -> _diagnostics.DiagnosticsMessageIterator:
-    for diagnostics_provider in diagnostics_providers:
-        yield from _set_location(diagnostics_provider.check_model(model), "model")
+    # Model
+    locations[id(model)] = "model"
+
+    # Functions
     for func in model.functions.values():
         func_name = func.name or "unnamed"
         func_domain = func.domain or ""
         func_id = f"{func_domain}:{func_name}" if func_domain else func_name
-        yield from diagnose_function(
-            func, diagnostics_providers, _location=f"function({func_id})"
-        )
-    yield from diagnose_graph(model.graph, diagnostics_providers, _location="graph")
-    # Whole-model analysis passes (run after the tree walk)
-    for diagnostics_provider in diagnostics_providers:
-        yield from diagnostics_provider.analyze_model(model)
+        func_loc = f"function({func_id})"
+        locations[id(func)] = func_loc
+
+        for i, inp in enumerate(func.inputs):
+            locations[id(inp)] = f"{func_loc}:input[{i}]({inp.name!r})"
+
+        for i, node in enumerate(func):
+            node_loc = _node_location(prefix=func_loc, index=i, node=node)
+            locations[id(node)] = node_loc
+            for j, out in enumerate(node.outputs):
+                locations[id(out)] = f"{node_loc}:output[{j}]({out.name!r})"
+
+    # Main graph
+    _build_graph_locations(model.graph, "graph", locations)
+
+    return locations
 
 
-def diagnose_graph(
+def _build_graph_locations(
     graph: ir.Graph,
-    diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
-    _location: str = "graph",
-) -> _diagnostics.DiagnosticsMessageIterator:
-    for diagnostics_provider in diagnostics_providers:
-        yield from _set_location(diagnostics_provider.check_graph(graph), _location)
-    for value in graph.inputs:
-        val_name = value.name or "?"
-        yield from diagnose_value(
-            value,
-            diagnostics_providers,
-            _location=f"{_location}:input({val_name})",
-        )
+    prefix: str,
+    locations: dict[int, str],
+) -> None:
+    """Recursively build location paths for a graph and its contents."""
+    locations[id(graph)] = prefix
+
+    for i, inp in enumerate(graph.inputs):
+        locations[id(inp)] = f"{prefix}:input[{i}]({inp.name!r})"
+
+    for name, init in graph.initializers.items():
+        locations[id(init)] = f"{prefix}:initializer({name!r})"
+
     for i, node in enumerate(graph):
-        node_label = node.name or node.op_type
-        node_loc = f"{_location}:node/{i}({node_label})"
-        yield from diagnose_node(
-            node,
-            diagnostics_providers,
-            _location=node_loc,
-        )
-    for initializer in graph.initializers.values():
-        yield from diagnose_tensor(
-            initializer,
-            diagnostics_providers,
-            _location=_location,
-        )
+        node_loc = _node_location(prefix=prefix, index=i, node=node)
+        locations[id(node)] = node_loc
+
+        for j, out in enumerate(node.outputs):
+            locations[id(out)] = f"{node_loc}:output[{j}]({out.name!r})"
+
+        for attr in node.attributes.values():
+            # Recurse into subgraphs
+            if attr.type == ir.AttributeType.GRAPH and attr.value is not None:
+                attr_loc = f"{node_loc}:{attr.name}"
+                _build_graph_locations(attr.value, attr_loc, locations)
+            elif attr.type == ir.AttributeType.GRAPHS and attr.value is not None:
+                for j, subgraph in enumerate(attr.value):
+                    attr_loc = f"{node_loc}:{attr.name}[{j}]"
+                    _build_graph_locations(subgraph, attr_loc, locations)
 
 
-def diagnose_function(
-    function: ir.Function,
+def _infer_location(
+    msg: _message.DiagnosticsMessage,
+    locations: dict[int, str],
+) -> None:
+    """Set location on a message if not already set, using the location map."""
+    if msg.location:
+        return  # Already has location
+
+    target_id = id(msg.target)
+    msg.location = locations.get(target_id, msg.target_type)
+
+
+def diagnose(
+    model: ir.Model,
     diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
-    _location: str = "function",
-) -> _diagnostics.DiagnosticsMessageIterator:
-    for diagnostics_provider in diagnostics_providers:
-        yield from _set_location(
-            diagnostics_provider.check_function(function),
-            _location,
-        )
-    for value in function.inputs:
-        val_name = value.name or "?"
-        yield from diagnose_value(
-            value,
-            diagnostics_providers,
-            _location=f"{_location}:input({val_name})",
-        )
-    for i, node in enumerate(function):
-        node_label = node.name or node.op_type
-        node_loc = f"{_location}:node/{i}({node_label})"
-        yield from diagnose_node(
-            node,
-            diagnostics_providers,
-            _location=node_loc,
-        )
+) -> Sequence[_message.DiagnosticsMessage]:
+    """Run all diagnostics providers on a model.
 
+    Each provider is responsible for walking the model structure as needed.
+    After collecting messages, location is inferred for messages that don't
+    have one set, based on the target object.
 
-def diagnose_node(
-    node: ir.Node,
-    diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
-    _location: str = "node",
-) -> _diagnostics.DiagnosticsMessageIterator:
-    for diagnostics_provider in diagnostics_providers:
-        yield from _set_location(diagnostics_provider.check_node(node), _location)
-    for value in node.outputs:
-        yield from diagnose_value(
-            value,
-            diagnostics_providers,
-            _location=_location,
-        )
-    for attr in node.attributes.values():
-        yield from diagnose_attribute(
-            attr,
-            diagnostics_providers,
-            _location=_location,
-        )
+    Args:
+        model: The ONNX IR model to diagnose.
+        diagnostics_providers: Providers to run.
 
+    Returns:
+        A sequence of diagnostics messages from all providers.
+    """
+    # Build location map for inference
+    locations = _build_location_map(model)
 
-def diagnose_tensor(
-    tensor: ir.Tensor,
-    diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
-    _location: str = "tensor",
-) -> _diagnostics.DiagnosticsMessageIterator:
-    for diagnostics_provider in diagnostics_providers:
-        yield from _set_location(diagnostics_provider.check_tensor(tensor), _location)
+    # Collect messages from all providers
+    messages: list[_message.DiagnosticsMessage] = []
+    for provider in diagnostics_providers:
+        for msg in provider.diagnose(model):
+            _infer_location(msg, locations)
+            messages.append(msg)
 
-
-def diagnose_value(
-    value: ir.Value,
-    diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
-    _location: str = "value",
-) -> _diagnostics.DiagnosticsMessageIterator:
-    for diagnostics_provider in diagnostics_providers:
-        yield from _set_location(diagnostics_provider.check_value(value), _location)
-
-
-def diagnose_attribute(
-    attribute: ir.Attr,
-    diagnostics_providers: Iterable[_diagnostics.DiagnosticsProvider],
-    _location: str = "attribute",
-) -> _diagnostics.DiagnosticsMessageIterator:
-    for diagnostics_provider in diagnostics_providers:
-        yield from _set_location(
-            diagnostics_provider.check_attribute(attribute),
-            _location,
-        )
-    if attribute.type == ir.AttributeType.TENSOR:
-        attribute = typing.cast(ir.Attr, attribute)
-        yield from diagnose_tensor(
-            attribute.value,
-            diagnostics_providers,
-            _location=_location,
-        )
-    elif attribute.type == ir.AttributeType.TENSORS:
-        attribute = typing.cast(ir.Attr, attribute)
-        for tensor in attribute.value:
-            yield from diagnose_tensor(
-                tensor,
-                diagnostics_providers,
-                _location=_location,
-            )
-    elif attribute.type == ir.AttributeType.GRAPH:
-        attribute = typing.cast(ir.Attr, attribute)
-        subgraph_loc = f"{_location}:{attribute.name}"
-        yield from diagnose_graph(
-            attribute.value,
-            diagnostics_providers,
-            _location=subgraph_loc,
-        )
-    elif attribute.type == ir.AttributeType.GRAPHS:
-        attribute = typing.cast(ir.Attr, attribute)
-        for i, graph in enumerate(attribute.value):
-            subgraph_loc = f"{_location}:{attribute.name}[{i}]"
-            yield from diagnose_graph(
-                graph,
-                diagnostics_providers,
-                _location=subgraph_loc,
-            )
+    return messages

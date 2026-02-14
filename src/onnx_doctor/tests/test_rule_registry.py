@@ -143,8 +143,8 @@ class RuleRegistryTest(unittest.TestCase):
 class DefaultRegistryTest(unittest.TestCase):
     def test_loads_all_rules(self):
         registry = get_default_registry()
-        # 41 ONNX rules + 13 PB rules + 3 SIM rules + 5 ORT rules = 62
-        self.assertEqual(len(registry), 62)
+        # 42 ONNX rules + 13 PB rules + 3 SIM rules + 5 ORT rules = 63
+        self.assertEqual(len(registry), 63)
 
     def test_all_rules_have_valid_prefix(self):
         registry = get_default_registry()
@@ -165,7 +165,7 @@ class DefaultRegistryTest(unittest.TestCase):
             self.assertIn(rule.category, ("spec", "ir", "protobuf"))
             self.assertIn(
                 rule.target_type,
-                ("model", "graph", "node", "value", "tensor", "function", "attribute"),
+                ("model", "graph", "node", "value", "function"),
             )
 
     def test_no_duplicate_codes(self):

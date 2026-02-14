@@ -17,49 +17,25 @@ DiagnosticsMessageIterator: TypeAlias = Union[
 
 
 class DiagnosticsProvider:
-    def analyze_model(self, model: ir.Model) -> DiagnosticsMessageIterator:
-        """Run whole-model analysis.
+    """Base class for diagnostics providers.
 
-        Unlike ``check_model``, which is dispatched as part of the per-element
-        tree walk, this method is called once after the walk completes and is
-        intended for cross-scope or structural analyses (e.g. variable
-        shadowing across nested subgraphs).
+    Providers analyze an ONNX model and yield diagnostics messages.
+    Each provider is responsible for walking the model structure as needed.
+    """
+
+    def diagnose(self, model: ir.Model) -> DiagnosticsMessageIterator:
+        """Analyze the model and yield diagnostics messages.
+
+        Providers should override this method to implement their checks.
+        The provider is responsible for walking the model graph/functions
+        as needed for its analysis.
+
+        Args:
+            model: The ONNX IR model to analyze.
+
+        Yields:
+            DiagnosticsMessage objects for any issues found.
         """
         del model
-        return
-        yield
-
-    def check_model(self, model: ir.Model) -> DiagnosticsMessageIterator:
-        del model
-        return
-        yield
-
-    def check_graph(self, graph: ir.Graph) -> DiagnosticsMessageIterator:
-        del graph
-        return
-        yield
-
-    def check_function(self, function: ir.Function) -> DiagnosticsMessageIterator:
-        del function
-        return
-        yield
-
-    def check_node(self, node: ir.Node) -> DiagnosticsMessageIterator:
-        del node
-        return
-        yield
-
-    def check_value(self, value: ir.Value) -> DiagnosticsMessageIterator:
-        del value
-        return
-        yield
-
-    def check_attribute(self, attr: ir.Attr) -> DiagnosticsMessageIterator:
-        del attr
-        return
-        yield
-
-    def check_tensor(self, tensor: ir.Tensor) -> DiagnosticsMessageIterator:
-        del tensor
         return
         yield

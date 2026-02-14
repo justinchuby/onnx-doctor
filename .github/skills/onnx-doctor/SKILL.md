@@ -89,9 +89,11 @@ onnx-doctor check model.onnx                  # CLI
 
 ## Architecture Notes
 
-- `_checker.py` walks the IR tree and dispatches to providers. It threads a `_location` string through the traversal for human-readable paths (e.g., `graph:node/3(MatMul)`).
+- `_checker.py` provides the `diagnose(model, providers)` entry point that calls each provider's `diagnose(model)` method.
+- Each provider is responsible for walking the model structure as needed (using `ir.traversal.RecursiveGraphIterator` or manual iteration).
+- **Location inference**: The driver builds a location map by walking the model once. For messages without a `location` set, it infers the location from the `target` object (e.g., `graph:node/3(MatMul)`).
 - `_loader.py` has a lazy singleton `get_default_registry()` that loads all YAML rule files on first access.
-- Providers yield `DiagnosticsMessage` objects via generator functions (`check_model`, `check_graph`, `check_node`, `check_value`, `check_tensor`, `check_function`).
+- Providers yield `DiagnosticsMessage` objects with `target` and `target_type` fields for context.
 
 ## Autofix Architecture
 
@@ -125,16 +127,18 @@ From `onnx_ir.passes.common` (all take `model: ir.Model`, return `PassResult`):
    )
    ```
 
-3. For model-level passes, use the module-level helper functions:
+3. For model-level passes, capture the model in a closure:
 
    ```python
    yield _emit(
        _rule("ONNX003"), "graph", graph,
-       fix=lambda: _apply_name_fix(self._model),
+       fix=lambda: _apply_name_fix(model),
    )
    ```
 
 ## Provider Structure
+
+Providers implement a single `diagnose(model: ir.Model)` method that yields `DiagnosticsMessage` objects. Each provider is responsible for its own traversal strategy.
 
 | Provider | Module | Rules | Notes |
 |----------|--------|-------|-------|
@@ -143,3 +147,22 @@ From `onnx_ir.passes.common` (all take `model: ir.Model`, return `PassResult`):
 | `SimplificationProvider` | `diagnostics_providers/simplification/` | SIM001–SIM003 (YAML) | Default, always enabled |
 | `OnnxRuntimeCompatibilityLinter` | `diagnostics_providers/onnxruntime_compatibility/` | ORT001–ORT005 (Python) | Opt-in via `--ort` flag |
 | `SparsityAnalyzer` | `diagnostics_providers/sparsity.py` | SP001 (Python) | Example provider, not registered |
+
+### Example Provider Implementation
+
+```python
+class MyProvider(onnx_doctor.DiagnosticsProvider):
+    def diagnose(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
+        # Model-level checks
+        if not model.graph.name:
+            yield _emit(_rule("MYRULE001"), "graph", model.graph)
+
+        # Walk all nodes (including subgraphs)
+        for node in ir.traversal.RecursiveGraphIterator(model.graph):
+            if some_condition(node):
+                yield _emit(_rule("MYRULE002"), "node", node)
+
+        # Check functions
+        for func in model.functions.values():
+            yield from self._check_function(func)
+```
