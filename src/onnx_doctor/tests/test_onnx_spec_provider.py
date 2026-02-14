@@ -148,6 +148,19 @@ class OnnxSpecProviderValueTest(unittest.TestCase):
         messages = _diagnose(model)
         self.assertIn("ONNX036", _codes(messages))
 
+    def test_initializer_missing_const_value(self):
+        # ONNX104: initializer must have const_value
+        graph = ir.Graph([], [], nodes=[], name="test")
+        v = ir.Value(name="init_without_value")
+        # Add to initializers without setting const_value
+        graph.initializers["init_without_value"] = v
+        graph.inputs.append(v)
+        graph.outputs.append(v)
+        model = ir.Model(graph, ir_version=10)
+        model.opset_imports[""] = 21
+        messages = _diagnose(model)
+        self.assertIn("ONNX104", _codes(messages))
+
 
 class LocationTrackingTest(unittest.TestCase):
     def test_graph_message_has_correct_target(self):

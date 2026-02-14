@@ -352,7 +352,16 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                         yield from self._check_graph(subgraph, model, opset_imports)
 
         for initializer in graph.initializers.values():
-            yield from self._check_tensor(initializer.const_value)
+            # ONNX104: initializer-missing-const-value
+            if initializer.const_value is None:
+                yield _emit(
+                    _rule("ONNX104"),
+                    "graph",
+                    graph,
+                    message=f"Initializer '{initializer.name}' has no const_value set.",
+                )
+            else:
+                yield from self._check_tensor(initializer.const_value)
 
     def _check_node(
         self,
