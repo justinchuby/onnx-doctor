@@ -143,8 +143,8 @@ class RuleRegistryTest(unittest.TestCase):
 class DefaultRegistryTest(unittest.TestCase):
     def test_loads_all_rules(self):
         registry = get_default_registry()
-        # 42 ONNX rules + 13 PB rules + 3 SIM rules + 5 ORT rules = 63
-        self.assertEqual(len(registry), 63)
+        # 43 ONNX rules + 13 PB rules + 3 SIM rules + 5 ORT rules = 64
+        self.assertEqual(len(registry), 64)
 
     def test_all_rules_have_valid_prefix(self):
         registry = get_default_registry()
