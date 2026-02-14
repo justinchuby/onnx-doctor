@@ -199,7 +199,7 @@ class MyProvider(onnx_doctor.DiagnosticsProvider):
                 )
 
         # Check graph-level properties
-        node_count = sum(1 for _ in model.graph)
+        node_count = len(model.graph)
         if node_count > 1000:
             yield onnx_doctor.DiagnosticsMessage(
                 target_type="graph",
