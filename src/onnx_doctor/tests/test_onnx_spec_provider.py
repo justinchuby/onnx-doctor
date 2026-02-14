@@ -171,6 +171,13 @@ class LocationTrackingTest(unittest.TestCase):
         self.assertEqual(onnx001[0].target_type, "graph")
         self.assertIs(onnx001[0].target, model.graph)
 
+    def test_graph_message_has_inferred_location(self):
+        model = _make_model(graph_name="")
+        messages = _diagnose(model)
+        onnx001 = [m for m in messages if m.error_code == "ONNX001"]
+        self.assertTrue(len(onnx001) > 0)
+        self.assertEqual(onnx001[0].location, "graph")
+
     def test_node_message_has_correct_target(self):
         # Create model with a fake op to trigger ONNX019
         x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
@@ -185,6 +192,22 @@ class LocationTrackingTest(unittest.TestCase):
         onnx019 = [m for m in messages if m.error_code == "ONNX019"]
         self.assertTrue(len(onnx019) > 0)
         self.assertEqual(onnx019[0].target_type, "node")
+
+    def test_node_message_has_inferred_location(self):
+        # Create model with a fake op to trigger ONNX019
+        x_info = onnx.helper.make_tensor_value_info("X", onnx.TensorProto.FLOAT, [1])
+        y_info = onnx.helper.make_tensor_value_info("Y", onnx.TensorProto.FLOAT, [1])
+        node = onnx.helper.make_node("FakeOp", ["X"], ["Y"], name="fake_node")
+        graph = onnx.helper.make_graph([node], "test", [x_info], [y_info])
+        model_proto = onnx.helper.make_model(
+            graph, opset_imports=[onnx.helper.make_opsetid("", 21)]
+        )
+        model = ir.serde.deserialize_model(model_proto)
+        messages = _diagnose(model)
+        onnx019 = [m for m in messages if m.error_code == "ONNX019"]
+        self.assertTrue(len(onnx019) > 0)
+        # Format: node[index](op_type, "name")
+        self.assertIn('node[0](FakeOp, "fake_node")', onnx019[0].location)
 
     def test_value_message_has_correct_target(self):
         graph = ir.Graph([], [], nodes=[], name="test")

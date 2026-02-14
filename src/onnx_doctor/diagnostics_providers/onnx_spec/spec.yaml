@@ -319,7 +319,7 @@ rules:
       explanation: |
         A value with a tensor type must have a defined dtype (not UNDEFINED).
 
-  tensor:
+    # Tensor-related rules (emitted against containing value/node)
     - code: ONNX022
       name: undefined-tensor-dtype
       category: spec

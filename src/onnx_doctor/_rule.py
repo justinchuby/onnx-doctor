@@ -7,9 +7,7 @@ from typing import Literal
 
 RuleCategory = Literal["spec", "ir", "protobuf"]
 RuleSeverity = Literal["error", "warning", "info"]
-TargetType = Literal[
-    "model", "graph", "node", "value", "tensor", "function", "attribute"
-]
+TargetType = Literal["model", "graph", "node", "value", "function"]
 
 
 @dataclasses.dataclass(frozen=True)

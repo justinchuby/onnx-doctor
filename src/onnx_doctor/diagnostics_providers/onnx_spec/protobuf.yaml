@@ -21,7 +21,8 @@ rules:
         Sparse tensor initializer names within a GraphProto must be unique
         across both initializers and sparse initializers.
 
-  attribute:
+  node:
+    # Attribute-related rules (emitted against containing node)
     - code: PB003
       name: attribute-multiple-value-fields
       category: protobuf
@@ -43,7 +44,8 @@ rules:
         should not have its own value field. In onnx_ir, Attr.is_ref()
         distinguishes reference attributes.
 
-  tensor:
+  value:
+    # Tensor-related rules (emitted against containing value/node)
     - code: PB005
       name: tensor-data-field-mismatch
       category: protobuf

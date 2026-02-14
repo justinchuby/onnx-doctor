@@ -341,10 +341,10 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 yield from self._check_value(out, model)
             for attr in node.attributes.values():
                 if attr.type == ir.AttributeType.TENSOR:
-                    yield from self._check_tensor(attr.value)
+                    yield from self._check_tensor(attr.value, node)
                 elif attr.type == ir.AttributeType.TENSORS:
                     for tensor in attr.value:
-                        yield from self._check_tensor(tensor)
+                        yield from self._check_tensor(tensor, node)
                 elif attr.type == ir.AttributeType.GRAPH:
                     yield from self._check_graph(attr.value, model, opset_imports)
                 elif attr.type == ir.AttributeType.GRAPHS:
@@ -361,7 +361,7 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                     message=f"Initializer '{initializer.name}' has no const_value set.",
                 )
             else:
-                yield from self._check_tensor(initializer.const_value)
+                yield from self._check_tensor(initializer.const_value, initializer)
 
     def _check_node(
         self,
@@ -439,14 +439,25 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
     def _check_tensor(
         self,
         tensor: ir.Tensor,
+        container: ir.Node | ir.Value,
     ) -> onnx_doctor.DiagnosticsMessageIterator:
-        """Check a single tensor."""
+        """Check a single tensor.
+
+        Args:
+            tensor: The tensor to check.
+            container: The containing Node (for attribute tensors) or Value (for initializers).
+        """
+        # Determine target_type based on container
+        target_type: onnx_doctor._message.PossibleTargetTypes = (
+            "node" if isinstance(container, ir.Node) else "value"
+        )
+
         # ONNX022: undefined-tensor-dtype
         if tensor.dtype == ir.DataType.UNDEFINED:
             yield _emit(
                 _rule("ONNX022"),
-                "tensor",
-                tensor,
+                target_type,
+                container,
                 message=f"Tensor '{tensor.name}' has UNDEFINED dtype.",
             )
 
@@ -458,8 +469,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             if not location:
                 yield _emit(
                     _rule("ONNX024"),
-                    "tensor",
-                    tensor,
+                    target_type,
+                    container,
                     message=f"External tensor '{tensor.name}' has empty location.",
                 )
                 return
@@ -468,8 +479,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             if os.path.isabs(location):
                 yield _emit(
                     _rule("ONNX023"),
-                    "tensor",
-                    tensor,
+                    target_type,
+                    container,
                     message=f"External tensor '{tensor.name}' has absolute path: '{location}'.",
                 )
 
@@ -477,8 +488,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             if ".." in pathlib.PurePosixPath(location).parts:
                 yield _emit(
                     _rule("ONNX025"),
-                    "tensor",
-                    tensor,
+                    target_type,
+                    container,
                     message=f"External tensor '{tensor.name}' path '{location}' escapes model directory.",
                 )
 
@@ -488,15 +499,15 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                 if not full_path.exists():
                     yield _emit(
                         _rule("ONNX026"),
-                        "tensor",
-                        tensor,
+                        target_type,
+                        container,
                         message=f"External tensor '{tensor.name}' file not found: '{full_path}'.",
                     )
                 elif not full_path.is_file():
                     yield _emit(
                         _rule("ONNX027"),
-                        "tensor",
-                        tensor,
+                        target_type,
+                        container,
                         message=f"External tensor '{tensor.name}' path is not a regular file: '{full_path}'.",
                     )
 

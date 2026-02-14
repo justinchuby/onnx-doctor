@@ -13,8 +13,7 @@ from onnx_doctor._rule import Rule
 PossibleTargetTypes = Literal[
     "model",
     "node",
-    "attribute",
-    "tensor",
+    "value",
     "graph",
     "function",
 ]
@@ -23,8 +22,6 @@ PossibleTargets = Union[
     ir.Model,
     ir.Graph,
     ir.Node,
-    ir.Attr,
-    ir.Tensor,
     ir.Value,
     ir.Function,
 ]

@@ -91,6 +91,7 @@ onnx-doctor check model.onnx                  # CLI
 
 - `_checker.py` provides the `diagnose(model, providers)` entry point that calls each provider's `diagnose(model)` method.
 - Each provider is responsible for walking the model structure as needed (using `ir.traversal.RecursiveGraphIterator` or manual iteration).
+- **Location inference**: The driver builds a location map by walking the model once. For messages without a `location` set, it infers the location from the `target` object (e.g., `graph:node/3(MatMul)`).
 - `_loader.py` has a lazy singleton `get_default_registry()` that loads all YAML rule files on first access.
 - Providers yield `DiagnosticsMessage` objects with `target` and `target_type` fields for context.
 

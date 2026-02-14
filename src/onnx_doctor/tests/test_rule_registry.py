@@ -165,7 +165,7 @@ class DefaultRegistryTest(unittest.TestCase):
             self.assertIn(rule.category, ("spec", "ir", "protobuf"))
             self.assertIn(
                 rule.target_type,
-                ("model", "graph", "node", "value", "tensor", "function", "attribute"),
+                ("model", "graph", "node", "value", "function"),
             )
 
     def test_no_duplicate_codes(self):

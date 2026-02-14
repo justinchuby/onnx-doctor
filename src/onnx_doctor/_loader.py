@@ -70,15 +70,13 @@ def _parse_severity(value: str) -> RuleSeverity:
 
 
 def _parse_category(value: str) -> RuleCategory:
-    value = value.lower()
     if value in ("spec", "ir", "protobuf"):
         return value  # type: ignore[return-value]
     raise ValueError(f"Invalid category: {value}")
 
 
 def _parse_target_type(value: str) -> TargetType:
-    value = value.lower()
-    if value in ("model", "graph", "node", "value", "tensor", "function", "attribute"):
+    if value in {"model", "graph", "node", "value", "function"}:
         return value  # type: ignore[return-value]
     raise ValueError(f"Invalid target type: {value}")
 
