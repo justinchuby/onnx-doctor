@@ -22,6 +22,10 @@ SUPPORTED_EXTENSIONS = frozenset(
     (".onnx", ".onnxtext", ".onnxtxt", ".onnxjson", ".textproto")
 )
 
+# Error code prefix for internal onnx-doctor errors (e.g. ERR001, ERR002).
+# These always bypass --select/--ignore filtering.
+_INTERNAL_ERROR_PREFIX = "ERR"
+
 
 def _collect_files(paths: Sequence[str]) -> list[str]:
     """Expand paths into a list of supported model files.
@@ -152,7 +156,7 @@ def _filter_messages(
     """Filter messages by select/ignore codes and minimum severity.
 
     Rules with ``default_enabled=False`` are excluded unless explicitly
-    listed in *select*.
+    listed in *select*.  Internal errors (OD prefix) always bypass filtering.
     """
     filtered = list(messages)
 
@@ -162,7 +166,8 @@ def _filter_messages(
         filtered = [
             m
             for m in filtered
-            if any(m.error_code == s or m.error_code.startswith(s) for s in select)
+            if m.error_code.startswith(_INTERNAL_ERROR_PREFIX)
+            or any(m.error_code == s or m.error_code.startswith(s) for s in select)
         ]
     else:
         # No --select: exclude default-disabled rules
@@ -172,12 +177,18 @@ def _filter_messages(
         filtered = [
             m
             for m in filtered
-            if not any(m.error_code == i or m.error_code.startswith(i) for i in ignore)
+            if m.error_code.startswith(_INTERNAL_ERROR_PREFIX)
+            or not any(m.error_code == i or m.error_code.startswith(i) for i in ignore)
         ]
 
     if min_severity is not None:
         max_rank = _severity_rank(min_severity)
-        filtered = [m for m in filtered if _severity_rank(m.severity) <= max_rank]
+        filtered = [
+            m
+            for m in filtered
+            if m.error_code.startswith(_INTERNAL_ERROR_PREFIX)
+            or _severity_rank(m.severity) <= max_rank
+        ]
 
     return filtered
 
@@ -232,6 +243,10 @@ def _cmd_check(args: argparse.Namespace) -> int:
             datefmt="%H:%M:%S",
             stream=sys.stderr,
         )
+    else:
+        # Suppress logger.exception output when not in verbose mode
+        logger.addHandler(logging.NullHandler())
+        logger.propagate = False
 
     model_paths = _collect_files(args.paths)
 
@@ -283,10 +298,10 @@ def _check_single(
         error_msg = onnx_doctor.DiagnosticsMessage(
             target_type="model",
             target=dummy_model,
-            message=f"Failed to load model: {e}",
+            message=f"Failed to load model: {e}. Use --verbose for more details.",
             severity="error",
             producer="onnx-doctor",
-            error_code="OD002",
+            error_code="ERR002",
             location="model",
         )
         filtered = _filter_messages(
@@ -315,10 +330,10 @@ def _check_single(
             onnx_doctor.DiagnosticsMessage(
                 target_type="model",
                 target=model,
-                message=f"A diagnostics provider raised an error: {e}",
+                message=f"A diagnostics provider raised an error: {e}. Use --verbose for more details.",
                 severity="error",
                 producer="onnx-doctor",
-                error_code="OD001",
+                error_code="ERR001",
                 location="model",
             )
         ]
@@ -374,10 +389,10 @@ def _check_single(
                     onnx_doctor.DiagnosticsMessage(
                         target_type="model",
                         target=model,
-                        message=f"A diagnostics provider raised an error after fix: {e}",
+                        message=f"A diagnostics provider raised an error after fix: {e}. Use --verbose for more details.",
                         severity="error",
                         producer="onnx-doctor",
-                        error_code="OD001",
+                        error_code="ERR001",
                         location="model",
                     )
                 ]
