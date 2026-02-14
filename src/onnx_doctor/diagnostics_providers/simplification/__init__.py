@@ -124,7 +124,6 @@ class SimplificationProvider(onnx_doctor.DiagnosticsProvider):
         """Check a graph for unused nodes."""
         # SIM003: unused-nodes
         graph_outputs = frozenset(graph.outputs)
-        unused_count = 0
         for node in reversed(list(graph)):
             removable = True
             for output in node.outputs:
@@ -132,15 +131,14 @@ class SimplificationProvider(onnx_doctor.DiagnosticsProvider):
                     removable = False
                     break
             if removable:
-                unused_count += 1
-        if unused_count > 0:
-            yield _emit(
-                _rule("SIM003"),
-                "graph",
-                graph,
-                message=f"Graph has {unused_count} unused node(s) whose outputs are not consumed.",
-                fix=lambda: _apply_remove_unused_nodes(model),
-            )
+                node_label = node.name or node.op_type
+                yield _emit(
+                    _rule("SIM003"),
+                    "node",
+                    node,
+                    message=f"Node '{node_label}' outputs are not consumed.",
+                    fix=lambda: _apply_remove_unused_nodes(model),
+                )
 
 
 def _apply_remove_unused_functions(model: ir.Model) -> None:
