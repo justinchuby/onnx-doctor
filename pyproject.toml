@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "onnx-doctor"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
     "onnx>=1.19",
     "onnx-ir>=0.1.16",
