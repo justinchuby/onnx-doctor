@@ -113,17 +113,17 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
             yield _emit(_rule("ONNX016"), "model", model)
 
     def check_graph(self, graph: ir.Graph) -> onnx_doctor.DiagnosticsMessageIterator:
-        # ONNX001: empty-graph-name
-        if not graph.name:
+        # ONNX001: empty-graph-name (root graph only)
+        # ONNX036/ONNX037: only apply to the root graph, not subgraphs
+        is_root_graph = self._root_graph is not None and graph is self._root_graph
+
+        if is_root_graph and not graph.name:
             yield _emit(
                 _rule("ONNX001"),
                 "graph",
                 graph,
                 fix=lambda: setattr(graph, "name", "main_graph"),
             )
-
-        # ONNX036/ONNX037: only apply to the root graph, not subgraphs
-        is_root_graph = self._root_graph is not None and graph is self._root_graph
 
         # ONNX036/ONNX037: input type/shape, ONNX038/ONNX039: output type/shape
         if is_root_graph:
@@ -559,6 +559,72 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                             f"but model imports {domain}:{self._opset_imports[domain]}."
                         ),
                     )
+
+    def analyze_model(self, model: ir.Model) -> onnx_doctor.DiagnosticsMessageIterator:
+        # ONNX040: subgraph-variable-shadowing
+        yield from self._check_shadowing(model.graph, frozenset())
+        for func in model.functions.values():
+            func_names = _collect_scope_names_function(func)
+            for node in func:
+                for attr in node.attributes.values():
+                    if attr.type == ir.AttributeType.GRAPH:
+                        yield from self._check_shadowing(attr.value, func_names)
+                    elif attr.type == ir.AttributeType.GRAPHS:
+                        for subgraph in attr.value:
+                            yield from self._check_shadowing(subgraph, func_names)
+
+    def _check_shadowing(
+        self,
+        graph: ir.Graph,
+        outer_names: frozenset[str],
+    ) -> onnx_doctor.DiagnosticsMessageIterator:
+        """Recursively check that subgraph names don't shadow outer scope names."""
+        local_names = _collect_scope_names_graph(graph)
+        shadowed = local_names & outer_names
+        for name in sorted(shadowed):
+            yield _emit(
+                _rule("ONNX040"),
+                "graph",
+                graph,
+                message=f"Subgraph value name '{name}' shadows a name from an outer scope.",
+            )
+        visible = outer_names | local_names
+        for node in graph:
+            for attr in node.attributes.values():
+                if attr.type == ir.AttributeType.GRAPH:
+                    yield from self._check_shadowing(attr.value, visible)
+                elif attr.type == ir.AttributeType.GRAPHS:
+                    for subgraph in attr.value:
+                        yield from self._check_shadowing(subgraph, visible)
+
+
+def _collect_scope_names_graph(graph: ir.Graph) -> frozenset[str]:
+    """Collect all value names defined in a graph scope."""
+    names: set[str] = set()
+    for v in graph.inputs:
+        if v.name:
+            names.add(v.name)
+    for name in graph.initializers:
+        if name:
+            names.add(name)
+    for node in graph:
+        for v in node.outputs:
+            if v.name:
+                names.add(v.name)
+    return frozenset(names)
+
+
+def _collect_scope_names_function(func: ir.Function) -> frozenset[str]:
+    """Collect all value names defined in a function scope."""
+    names: set[str] = set()
+    for v in func.inputs:
+        if v.name:
+            names.add(v.name)
+    for node in func:
+        for v in node.outputs:
+            if v.name:
+                names.add(v.name)
+    return frozenset(names)
 
 
 def _apply_name_fix(model: ir.Model) -> None:

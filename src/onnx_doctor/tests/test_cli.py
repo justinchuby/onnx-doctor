@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 import unittest
 
 
@@ -49,12 +50,31 @@ class CLITest(unittest.TestCase):
         result = self._run("check", "/tmp/nonexistent_model.onnx")
         self.assertNotEqual(result.returncode, 0)
 
+    def test_check_multiple_nonexistent_files(self):
+        result = self._run(
+            "check", "/tmp/nonexistent_a.onnx", "/tmp/nonexistent_b.onnx"
+        )
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_check_empty_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self._run("check", tmpdir)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("No supported model files found", result.stderr)
+
     def test_check_help(self):
         result = self._run("check", "--help")
         self.assertEqual(result.returncode, 0)
         self.assertIn("--select", result.stdout)
         self.assertIn("--ignore", result.stdout)
         self.assertIn("--output-format", result.stdout)
+        self.assertIn("--verbose", result.stdout)
+
+    def test_check_verbose_nonexistent_file(self):
+        result = self._run("check", "--verbose", "/tmp/nonexistent_model.onnx")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Checking", result.stderr)
+        self.assertIn("nonexistent_model.onnx", result.stderr)
 
 
 if __name__ == "__main__":

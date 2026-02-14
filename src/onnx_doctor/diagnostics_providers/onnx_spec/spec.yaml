@@ -5,14 +5,14 @@ rules:
       category: spec
       severity: error
       fixable: true
-      message: Graph name is empty.
-      suggestion: Set the name of the graph, e.g. `graph.name = 'main_graph'`.
+      message: Graph name of the root graph is empty.
+      suggestion: Set the name of the graph, e.g. `model.graph.name = 'main_graph'`.
       explanation: |
         The 'name' field of a graph must not be empty per the ONNX spec.
 
         ## Example
         ```python
-        graph.name = 'main_graph'
+        model.graph.name = 'main_graph'
         ```
 
     - code: ONNX003
@@ -144,6 +144,17 @@ rules:
         Per the ONNX specification, graph outputs must have shape information.
         Runtimes use shapes to allocate memory. Running shape inference can
         often resolve this automatically.
+
+    - code: ONNX040
+      name: subgraph-variable-shadowing
+      category: spec
+      severity: error
+      message: Subgraph value name shadows a name from an outer scope.
+      suggestion: Rename the value in the subgraph to avoid shadowing.
+      explanation: |
+        The ONNX spec requires that node output names and names of inputs
+        and initializers of a subgraph are distinct from names visible in
+        outer scopes.  Variable shadowing is not allowed.
 
     - code: ONNX101
       name: duplicate-graph-input

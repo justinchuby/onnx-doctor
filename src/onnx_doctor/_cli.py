@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import logging
+import os
 import sys
 from collections.abc import Sequence
 
@@ -13,6 +15,36 @@ from onnx_doctor._formatter import GithubFormatter, JsonFormatter, TextFormatter
 from onnx_doctor._loader import get_default_registry
 from onnx_doctor.diagnostics_providers.onnx_spec import OnnxSpecProvider
 from onnx_doctor.diagnostics_providers.simplification import SimplificationProvider
+
+logger = logging.getLogger("onnx-doctor")
+
+SUPPORTED_EXTENSIONS = frozenset(
+    (".onnx", ".onnxtext", ".onnxtxt", ".onnxjson", ".textproto")
+)
+
+# Error code prefix for internal onnx-doctor errors (e.g. ERR001, ERR002).
+# These always bypass --select/--ignore filtering.
+_INTERNAL_ERROR_PREFIX = "ERR"
+
+
+def _collect_files(paths: Sequence[str]) -> list[str]:
+    """Expand paths into a list of supported model files.
+
+    Files are returned as-is. Directories are recursively scanned for files
+    with supported extensions.
+    """
+    files: list[str] = []
+    for path in paths:
+        if os.path.isdir(path):
+            for root, _dirs, filenames in os.walk(path):
+                files.extend(
+                    os.path.join(root, filename)
+                    for filename in sorted(filenames)
+                    if os.path.splitext(filename)[1].lower() in SUPPORTED_EXTENSIONS
+                )
+        else:
+            files.append(path)
+    return files
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -26,7 +58,12 @@ def _build_parser() -> argparse.ArgumentParser:
     check_parser = subparsers.add_parser(
         "check", help="Check an ONNX model for issues."
     )
-    check_parser.add_argument("model", type=str, help="Path to the .onnx model file.")
+    check_parser.add_argument(
+        "paths",
+        type=str,
+        nargs="+",
+        help="Paths to ONNX model files or directories to scan.",
+    )
     check_parser.add_argument(
         "--select",
         type=str,
@@ -84,6 +121,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default="CPUExecutionProvider",
         help="Execution provider for ORT checks (default: CPUExecutionProvider).",
     )
+    check_parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        default=False,
+        help="Show verbose output including which files are being checked and full error tracebacks.",
+    )
 
     # explain command
     explain_parser = subparsers.add_parser(
@@ -112,7 +156,7 @@ def _filter_messages(
     """Filter messages by select/ignore codes and minimum severity.
 
     Rules with ``default_enabled=False`` are excluded unless explicitly
-    listed in *select*.
+    listed in *select*.  Internal errors (OD prefix) always bypass filtering.
     """
     filtered = list(messages)
 
@@ -122,7 +166,8 @@ def _filter_messages(
         filtered = [
             m
             for m in filtered
-            if any(m.error_code == s or m.error_code.startswith(s) for s in select)
+            if m.error_code.startswith(_INTERNAL_ERROR_PREFIX)
+            or any(m.error_code == s or m.error_code.startswith(s) for s in select)
         ]
     else:
         # No --select: exclude default-disabled rules
@@ -132,12 +177,18 @@ def _filter_messages(
         filtered = [
             m
             for m in filtered
-            if not any(m.error_code == i or m.error_code.startswith(i) for i in ignore)
+            if m.error_code.startswith(_INTERNAL_ERROR_PREFIX)
+            or not any(m.error_code == i or m.error_code.startswith(i) for i in ignore)
         ]
 
     if min_severity is not None:
         max_rank = _severity_rank(min_severity)
-        filtered = [m for m in filtered if _severity_rank(m.severity) <= max_rank]
+        filtered = [
+            m
+            for m in filtered
+            if m.error_code.startswith(_INTERNAL_ERROR_PREFIX)
+            or _severity_rank(m.severity) <= max_rank
+        ]
 
     return filtered
 
@@ -184,18 +235,108 @@ def _get_providers(args: argparse.Namespace) -> list[onnx_doctor.DiagnosticsProv
 
 def _cmd_check(args: argparse.Namespace) -> int:
     """Run the check command."""
-    model_path = args.model
+    verbose = getattr(args, "verbose", False)
+    if verbose:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="[%(asctime)s] %(levelname)s %(name)s: %(message)s",
+            datefmt="%H:%M:%S",
+            stream=sys.stderr,
+        )
+    else:
+        # Suppress logger.exception output when not in verbose mode
+        logger.addHandler(logging.NullHandler())
+        logger.propagate = False
 
+    model_paths = _collect_files(args.paths)
+
+    if not model_paths:
+        print("No supported model files found.", file=sys.stderr)
+        return 1
+
+    if args.fix and args.output and len(model_paths) > 1:
+        print(
+            "Error: --output cannot be used with --fix when checking multiple files.",
+            file=sys.stderr,
+        )
+        return 1
+
+    multi = len(model_paths) > 1
+    exit_code = 0
+    all_messages: list[onnx_doctor.DiagnosticsMessage] = []
+    for model_path in model_paths:
+        logger.info("Checking '%s'...", model_path)
+        result, filtered = _check_single(model_path, args, show_summary=not multi)
+        all_messages.extend(filtered)
+        if result != 0:
+            exit_code = 1
+
+    # Print a single aggregate summary when checking multiple files
+    if multi and args.output_format == "text":
+        TextFormatter().print_summary(all_messages)
+
+    return exit_code
+
+
+def _check_single(
+    model_path: str,
+    args: argparse.Namespace,
+    *,
+    show_summary: bool = True,
+) -> tuple[int, list[onnx_doctor.DiagnosticsMessage]]:
+    """Run the check command on a single model file.
+
+    Returns:
+        A tuple of (exit_code, filtered_messages).
+    """
     # Load model
     try:
         model = ir.load(model_path)
     except Exception as e:
-        print(f"Error loading model '{model_path}': {e}", file=sys.stderr)
-        return 1
+        logger.exception("Failed to load model '%s'", model_path)
+        dummy_model = ir.Model(ir.Graph([], [], nodes=[]), ir_version=0)
+        error_msg = onnx_doctor.DiagnosticsMessage(
+            target_type="model",
+            target=dummy_model,
+            message=f"Failed to load model: {e}. Use --verbose for more details.",
+            severity="error",
+            producer="onnx-doctor",
+            error_code="ERR002",
+            location="model",
+        )
+        filtered = _filter_messages(
+            [error_msg],
+            select=args.select,
+            ignore=args.ignore,
+            min_severity=args.severity,
+        )
+        if args.output_format == "json":
+            JsonFormatter(file_path=model_path).format(filtered)
+        elif args.output_format == "github":
+            GithubFormatter(file_path=model_path).format(filtered)
+        else:
+            TextFormatter(file_path=model_path).format(
+                filtered, show_summary=show_summary
+            )
+        return 1, filtered
 
     # Run diagnostics
     providers = _get_providers(args)
-    messages = onnx_doctor.diagnose(model, providers)
+    try:
+        messages = list(onnx_doctor.diagnose(model, providers))
+    except Exception as e:
+        logger.exception("Diagnostics provider error")
+        messages = [
+            onnx_doctor.DiagnosticsMessage(
+                target_type="model",
+                target=model,
+                message=f"A diagnostics provider raised an error: {e}. Use --verbose for more details.",
+                severity="error",
+                producer="onnx-doctor",
+                error_code="ERR001",
+                location="model",
+            )
+        ]
 
     # Filter
     filtered = _filter_messages(
@@ -226,7 +367,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
                     tofile=model_path + " (fixed)",
                 )
                 sys.stdout.writelines(diff)
-        return 0
+        return 0, filtered
 
     # Apply fixes if requested
     fix_summary: str | None = None
@@ -240,7 +381,21 @@ def _cmd_check(args: argparse.Namespace) -> int:
                 f"saved to {output_path}."
             )
             # Re-run diagnostics on the fixed model to show remaining issues
-            messages = onnx_doctor.diagnose(model, providers)
+            try:
+                messages = list(onnx_doctor.diagnose(model, providers))
+            except Exception as e:
+                logger.exception("Diagnostics provider error after fix")
+                messages = [
+                    onnx_doctor.DiagnosticsMessage(
+                        target_type="model",
+                        target=model,
+                        message=f"A diagnostics provider raised an error after fix: {e}. Use --verbose for more details.",
+                        severity="error",
+                        producer="onnx-doctor",
+                        error_code="ERR001",
+                        location="model",
+                    )
+                ]
             filtered = _filter_messages(
                 messages,
                 select=args.select,
@@ -253,19 +408,20 @@ def _cmd_check(args: argparse.Namespace) -> int:
     # Format output
     if args.output_format == "json":
         formatter = JsonFormatter(file_path=model_path)
+        formatter.format(filtered)
     elif args.output_format == "github":
         formatter = GithubFormatter(file_path=model_path)
+        formatter.format(filtered)
     else:
         formatter = TextFormatter(file_path=model_path)
-
-    formatter.format(filtered)
+        formatter.format(filtered, show_summary=show_summary)
 
     if fix_summary:
         print(fix_summary, file=sys.stderr)
 
     # Exit code: 1 if any errors
     has_errors = any(m.severity == "error" for m in filtered)
-    return 1 if has_errors else 0
+    return (1 if has_errors else 0), filtered
 
 
 def _cmd_explain(args: argparse.Namespace) -> int:
