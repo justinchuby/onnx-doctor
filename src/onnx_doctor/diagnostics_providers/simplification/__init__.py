@@ -81,7 +81,7 @@ class SimplificationProvider(onnx_doctor.DiagnosticsProvider):
 
             unused_funcs = [
                 f
-                for key, f in model.functions.items()
+                for f in model.functions.values()
                 if (f.domain or "", f.name or "") not in used_ids
             ]
             if unused_funcs:
@@ -131,12 +131,15 @@ class SimplificationProvider(onnx_doctor.DiagnosticsProvider):
                     removable = False
                     break
             if removable:
-                node_label = node.name or node.op_type
+                if node.name:
+                    node_label = f'"{node.name}" ({node.op_type})'
+                else:
+                    node_label = f"({node.op_type})"
                 yield _emit(
                     _rule("SIM003"),
                     "node",
                     node,
-                    message=f"Node '{node_label}' outputs are not consumed.",
+                    message=f"Node {node_label} outputs are not consumed.",
                     fix=lambda: _apply_remove_unused_nodes(model),
                 )
 
