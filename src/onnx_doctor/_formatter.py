@@ -19,7 +19,12 @@ class TextFormatter:
         self._file_path = file_path
         self._console = Console(stderr=True)
 
-    def format(self, messages: Sequence[DiagnosticsMessage]) -> None:
+    def format(
+        self,
+        messages: Sequence[DiagnosticsMessage],
+        *,
+        show_summary: bool = True,
+    ) -> None:
         """Print all messages to stderr."""
         for i, msg in enumerate(messages):
             self._format_one(msg)
@@ -27,7 +32,8 @@ class TextFormatter:
             suggestion = msg.suggestion or (msg.rule.suggestion if msg.rule else None)
             if suggestion and i < len(messages) - 1:
                 self._console.print()
-        self._print_summary(messages)
+        if show_summary:
+            self.print_summary(messages)
 
     def _format_one(self, msg: DiagnosticsMessage) -> None:
         location = self._build_location(msg)
@@ -66,7 +72,8 @@ class TextFormatter:
         loc = msg.location or msg.target_type
         return f"{self._file_path}:{loc}:"
 
-    def _print_summary(self, messages: Sequence[DiagnosticsMessage]) -> None:
+    def print_summary(self, messages: Sequence[DiagnosticsMessage]) -> None:
+        """Print an aggregate summary line to stderr."""
         errors = sum(1 for m in messages if m.severity == "error")
         warnings = sum(1 for m in messages if m.severity == "warning")
         infos = sum(1 for m in messages if m.severity not in ("error", "warning"))

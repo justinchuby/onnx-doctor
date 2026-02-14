@@ -228,7 +228,10 @@ def _cmd_check(args: argparse.Namespace) -> int:
     verbose = getattr(args, "verbose", False)
     if verbose:
         logging.basicConfig(
-            level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stderr
+            level=logging.INFO,
+            format="[%(asctime)s] %(levelname)s %(name)s: %(message)s",
+            datefmt="%H:%M:%S",
+            stream=sys.stderr,
         )
 
     model_paths = _collect_files(args.paths)
@@ -244,36 +247,58 @@ def _cmd_check(args: argparse.Namespace) -> int:
         )
         return 1
 
+    multi = len(model_paths) > 1
     exit_code = 0
+    all_messages: list[onnx_doctor.DiagnosticsMessage] = []
     for model_path in model_paths:
         logger.info("Checking '%s'...", model_path)
-        result = _check_single(model_path, args)
+        result, filtered = _check_single(model_path, args, show_summary=not multi)
+        all_messages.extend(filtered)
         if result != 0:
             exit_code = 1
+
+    # Print a single aggregate summary when checking multiple files
+    if multi and args.output_format == "text":
+        TextFormatter().print_summary(all_messages)
 
     return exit_code
 
 
-def _check_single(model_path: str, args: argparse.Namespace) -> int:
-    """Run the check command on a single model file."""
+def _check_single(
+    model_path: str,
+    args: argparse.Namespace,
+    *,
+    show_summary: bool = True,
+) -> tuple[int, list[onnx_doctor.DiagnosticsMessage]]:
+    """Run the check command on a single model file.
+
+    Returns:
+        A tuple of (exit_code, filtered_messages).
+    """
     # Load model
     try:
         model = ir.load(model_path)
     except Exception as e:
         print(f"Error loading model '{model_path}': {e}", file=sys.stderr)
-        return 1
+        return 1, []
 
     # Run diagnostics
     providers = _get_providers(args)
     try:
-        messages = onnx_doctor.diagnose(model, providers)
+        messages = list(onnx_doctor.diagnose(model, providers))
     except Exception as e:
-        print(
-            f"Error running diagnostics on '{model_path}': {e}",
-            file=sys.stderr,
-        )
-        logger.debug("%s", traceback.format_exc())
-        return 1
+        logger.debug("Diagnostics provider error:\n%s", traceback.format_exc())
+        messages = [
+            onnx_doctor.DiagnosticsMessage(
+                target_type="model",
+                target=model,
+                message=f"A diagnostics provider raised an error: {e}",
+                severity="error",
+                producer="onnx-doctor",
+                error_code="OD001",
+                location="model",
+            )
+        ]
 
     # Filter
     filtered = _filter_messages(
@@ -304,7 +329,7 @@ def _check_single(model_path: str, args: argparse.Namespace) -> int:
                     tofile=model_path + " (fixed)",
                 )
                 sys.stdout.writelines(diff)
-        return 0
+        return 0, filtered
 
     # Apply fixes if requested
     fix_summary: str | None = None
@@ -319,14 +344,23 @@ def _check_single(model_path: str, args: argparse.Namespace) -> int:
             )
             # Re-run diagnostics on the fixed model to show remaining issues
             try:
-                messages = onnx_doctor.diagnose(model, providers)
+                messages = list(onnx_doctor.diagnose(model, providers))
             except Exception as e:
-                print(
-                    f"Error re-running diagnostics after fix on '{model_path}': {e}",
-                    file=sys.stderr,
+                logger.debug(
+                    "Diagnostics provider error after fix:\n%s",
+                    traceback.format_exc(),
                 )
-                logger.debug("%s", traceback.format_exc())
-                return 1
+                messages = [
+                    onnx_doctor.DiagnosticsMessage(
+                        target_type="model",
+                        target=model,
+                        message=f"A diagnostics provider raised an error after fix: {e}",
+                        severity="error",
+                        producer="onnx-doctor",
+                        error_code="OD001",
+                        location="model",
+                    )
+                ]
             filtered = _filter_messages(
                 messages,
                 select=args.select,
@@ -339,19 +373,20 @@ def _check_single(model_path: str, args: argparse.Namespace) -> int:
     # Format output
     if args.output_format == "json":
         formatter = JsonFormatter(file_path=model_path)
+        formatter.format(filtered)
     elif args.output_format == "github":
         formatter = GithubFormatter(file_path=model_path)
+        formatter.format(filtered)
     else:
         formatter = TextFormatter(file_path=model_path)
-
-    formatter.format(filtered)
+        formatter.format(filtered, show_summary=show_summary)
 
     if fix_summary:
         print(fix_summary, file=sys.stderr)
 
     # Exit code: 1 if any errors
     has_errors = any(m.severity == "error" for m in filtered)
-    return 1 if has_errors else 0
+    return (1 if has_errors else 0), filtered
 
 
 def _cmd_explain(args: argparse.Namespace) -> int:
