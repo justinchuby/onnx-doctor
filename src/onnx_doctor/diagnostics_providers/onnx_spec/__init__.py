@@ -149,7 +149,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                         graph,
                         message=f"Graph input '{value.name}' is missing type information.",
                     )
-                elif value.shape is None:
+                elif isinstance(value.type, ir.TensorType) and value.shape is None:
+                    # Only check shape for TensorType (SequenceType etc. don't have shapes)
                     yield _emit(
                         _rule("ONNX037"),
                         "graph",
@@ -164,7 +165,8 @@ class OnnxSpecProvider(onnx_doctor.DiagnosticsProvider):
                         graph,
                         message=f"Graph output '{value.name}' is missing type information.",
                     )
-                elif value.shape is None:
+                elif isinstance(value.type, ir.TensorType) and value.shape is None:
+                    # Only check shape for TensorType (SequenceType etc. don't have shapes)
                     yield _emit(
                         _rule("ONNX039"),
                         "graph",

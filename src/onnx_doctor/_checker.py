@@ -36,14 +36,14 @@ def _build_location_map(model: ir.Model) -> dict[int, str]:
         func_loc = f"function({func_id})"
         locations[id(func)] = func_loc
 
-        for inp in func.inputs:
-            locations[id(inp)] = f"{func_loc}:input({inp.name or '?'})"
+        for i, inp in enumerate(func.inputs):
+            locations[id(inp)] = f"{func_loc}:input[{i}]({inp.name!r})"
 
         for i, node in enumerate(func):
             node_loc = _node_location(prefix=func_loc, index=i, node=node)
             locations[id(node)] = node_loc
-            for out in node.outputs:
-                locations[id(out)] = f"{node_loc}:output({out.name or '?'})"
+            for j, out in enumerate(node.outputs):
+                locations[id(out)] = f"{node_loc}:output[{j}]({out.name!r})"
 
     # Main graph
     _build_graph_locations(model.graph, "graph", locations)
@@ -59,18 +59,18 @@ def _build_graph_locations(
     """Recursively build location paths for a graph and its contents."""
     locations[id(graph)] = prefix
 
-    for inp in graph.inputs:
-        locations[id(inp)] = f"{prefix}:input({inp.name or '?'})"
+    for i, inp in enumerate(graph.inputs):
+        locations[id(inp)] = f"{prefix}:input[{i}]({inp.name!r})"
 
     for name, init in graph.initializers.items():
-        locations[id(init)] = f"{prefix}:initializer({name})"
+        locations[id(init)] = f"{prefix}:initializer({name!r})"
 
     for i, node in enumerate(graph):
         node_loc = _node_location(prefix=prefix, index=i, node=node)
         locations[id(node)] = node_loc
 
-        for out in node.outputs:
-            locations[id(out)] = f"{node_loc}:output({out.name or '?'})"
+        for j, out in enumerate(node.outputs):
+            locations[id(out)] = f"{node_loc}:output[{j}]({out.name!r})"
 
         for attr in node.attributes.values():
             # Recurse into subgraphs
